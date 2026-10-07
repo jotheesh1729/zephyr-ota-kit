@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 430" width="900" height="430" font-family="Helvetica, Arial, sans-serif">
+  <title>Update flow</title>
+  <rect width="900" height="430" fill="#ffffff"/>
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#222222"/></marker>
+    <marker id="b" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#1f6feb"/></marker>
+  </defs>
+  <text x="30" y="34" text-anchor="start" font-size="16" font-weight="bold" fill="#222222">Update flow</text>
+  <rect x="30" y="70" width="100" height="50" fill="#f0f0f0" stroke="#1f6feb" stroke-width="2"/>
+  <text x="80.0" y="99.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">Upload</text>
+  <rect x="150" y="70" width="100" height="50" fill="#f0f0f0" stroke="#1f6feb" stroke-width="2"/>
+  <text x="200.0" y="99.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">Mark test</text>
+  <polyline points="130,95.0 150,95.0" fill="none" stroke="#1f6feb" stroke-width="2" marker-end="url(#b)"/>
+  <rect x="270" y="70" width="100" height="50" fill="#f0f0f0" stroke="#1f6feb" stroke-width="2"/>
+  <text x="320.0" y="99.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">Reset</text>
+  <polyline points="250,95.0 270,95.0" fill="none" stroke="#1f6feb" stroke-width="2" marker-end="url(#b)"/>
+  <rect x="390" y="70" width="100" height="50" fill="#f0f0f0" stroke="#1f6feb" stroke-width="2"/>
+  <text x="440.0" y="91.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">Verify</text>
+  <text x="440.0" y="107.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">signature</text>
+  <polyline points="370,95.0 390,95.0" fill="none" stroke="#1f6feb" stroke-width="2" marker-end="url(#b)"/>
+  <rect x="510" y="70" width="100" height="50" fill="#f0f0f0" stroke="#1f6feb" stroke-width="2"/>
+  <text x="560.0" y="99.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">Swap slots</text>
+  <polyline points="490,95.0 510,95.0" fill="none" stroke="#1f6feb" stroke-width="2" marker-end="url(#b)"/>
+  <rect x="630" y="70" width="100" height="50" fill="#f0f0f0" stroke="#1f6feb" stroke-width="2"/>
+  <text x="680.0" y="99.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">Test boot</text>
+  <polyline points="610,95.0 630,95.0" fill="none" stroke="#1f6feb" stroke-width="2" marker-end="url(#b)"/>
+  <rect x="750" y="70" width="100" height="50" fill="#f0f0f0" stroke="#1f6feb" stroke-width="2"/>
+  <text x="800.0" y="99.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">Confirm</text>
+  <polyline points="730,95.0 750,95.0" fill="none" stroke="#1f6feb" stroke-width="2" marker-end="url(#b)"/>
+  <text x="680" y="60" text-anchor="middle" font-size="12" font-weight="normal" fill="#555555">health check ok</text>
+  <polyline points="440,120 440,190" fill="none" stroke="#222222" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="448" y="160" text-anchor="start" font-size="12" font-weight="normal" fill="#555555">not valid</text>
+  <rect x="390" y="190" width="100" height="50" fill="#f0f0f0" stroke="#222222" stroke-width="1.5"/>
+  <text x="440.0" y="211.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">Keep old</text>
+  <text x="440.0" y="227.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">image</text>
+  <polyline points="680,120 680,190" fill="none" stroke="#222222" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="688" y="150" text-anchor="start" font-size="12" font-weight="normal" fill="#555555">check fails,</text>
+  <text x="688" y="166" text-anchor="start" font-size="12" font-weight="normal" fill="#555555">or image hangs</text>
+  <rect x="630" y="190" width="100" height="50" fill="#f0f0f0" stroke="#222222" stroke-width="1.5"/>
+  <text x="680.0" y="211.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">Watchdog or</text>
+  <text x="680.0" y="227.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">next reset</text>
+  <polyline points="680,240 680,290" fill="none" stroke="#222222" stroke-width="1.5" marker-end="url(#a)"/>
+  <rect x="630" y="290" width="100" height="50" fill="#f0f0f0" stroke="#222222" stroke-width="1.5"/>
+  <text x="680.0" y="319.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">Swap back</text>
+  <polyline points="630,315 490,315" fill="none" stroke="#222222" stroke-width="1.5" marker-end="url(#a)"/>
+  <rect x="390" y="290" width="100" height="50" fill="#f0f0f0" stroke="#222222" stroke-width="1.5"/>
+  <text x="440.0" y="311.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">Old image</text>
+  <text x="440.0" y="327.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">runs</text>
+  <polyline points="560,120 560,370 590,370" fill="none" stroke="#222222" stroke-width="1.5" stroke-dasharray='6 4' marker-end="url(#a)"/>
+  <text x="568" y="262" text-anchor="start" font-size="12" font-weight="normal" fill="#555555">power lost</text>
+  <rect x="590" y="350" width="140" height="40" fill="#f0f0f0" stroke="#222222" stroke-width="1.5"/>
+  <text x="660.0" y="374.5" text-anchor="middle" font-size="13" font-weight="normal" fill="#222222">Resume swap</text>
+  <text x="30" y="410" text-anchor="start" font-size="12" font-weight="normal" fill="#555555">Blue: a good update. Black: the update is refused or undone. Dashed: power loss during the swap.</text>
+</svg>
