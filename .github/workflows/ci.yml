@@ -1,0 +1,50 @@
+# Copyright (c) 2026 Jotheesh Kummathi
+# SPDX-License-Identifier: Apache-2.0
+
+name: ci
+on: [push, pull_request]
+
+# What runs here: host side tests, a native_sim build of the module, and static analysis.
+# What does not: the board build (needs the Zephyr SDK and the STM32 HAL) and every hardware
+# test. Those are run by hand on a disco_l475_iot1, see README.md.
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Standard library only: no Zephyr, no toolchain, no board.
+      - run: python3 -m unittest discover -s tests/doctor -v
+      # No user names or home directories in the repository, fixtures included.
+      - run: python3 tests/check_paths.py
+
+  native-sim-and-static-analysis:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ota-kit
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Host packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build gperf device-tree-compiler cppcheck
+      - name: West workspace (Zephyr pinned in ota-kit/west.yml)
+        run: |
+          pip install west
+          west init -l ota-kit
+          west update --narrow -o=--depth=1
+          pip install -r zephyr/scripts/requirements-base.txt
+      - name: Build the minimal sample for native_sim (64 bit, host compiler)
+        run: |
+          export ZEPHYR_TOOLCHAIN_VARIANT=host
+          west build -p always -b native_sim/native/64 -d build/native_sim ota-kit/samples/minimal
+      - name: Static analysis of this repository's C files
+        run: |
+          python3 ota-kit/scripts/static_analysis.py build/native_sim \
+            --accepted ota-kit/tests/static/accepted.txt
