@@ -1,0 +1,10 @@
+/*
+ * Copyright (c) 2026 Jotheesh Kummathi
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* Fixture: the flash reset is missing, as before the QSPI reset fix. */
+&mx25r6435f {
+	/delete-property/ reset-cmd;
+	/delete-property/ reset-cmd-wait;
+};

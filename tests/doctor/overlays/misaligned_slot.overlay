@@ -1,0 +1,9 @@
+/*
+ * Copyright (c) 2026 Jotheesh Kummathi
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* Fixture: slot 0 is 866 K, not a whole number of 4 K sectors. */
+&slot0_partition {
+	reg = <0x10000 DT_SIZE_K(866)>;
+};

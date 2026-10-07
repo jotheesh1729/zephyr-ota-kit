@@ -1,0 +1,9 @@
+/*
+ * Copyright (c) 2026 Jotheesh Kummathi
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* Fixture: an MCUboot overlay that replaces the stock one and forgets the code partition (a bug from the first bring-up). */
+&slot0_partition {
+	reg = <0x10000 DT_SIZE_K(868)>;
+};
