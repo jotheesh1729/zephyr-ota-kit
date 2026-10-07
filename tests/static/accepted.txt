@@ -1,0 +1,14 @@
+# Copyright (c) 2026 Jotheesh Kummathi
+# SPDX-License-Identifier: Apache-2.0
+#
+# Findings of scripts/static_analysis.py that are accepted, as "path:rule".
+# Each one is explained in docs/DEVIATIONS.md. CI fails on any finding that is not listed here.
+app/src/main.c:MISRA 10.3
+src/ota_kit.c:MISRA 10.1
+src/ota_kit.c:MISRA 10.3
+src/ota_kit.c:MISRA 8.4
+src/ota_kit_ble.c:MISRA 8.9
+src/ota_kit_ble.c:MISRA 7.2
+src/ota_kit_ble.c:MISRA 10.4
+src/ota_kit_ble.c:constParameterCallback
+src/ota_kit_ble.c:MISRA 8.4
