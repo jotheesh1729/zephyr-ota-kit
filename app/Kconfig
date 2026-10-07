@@ -1,0 +1,48 @@
+# Copyright (c) 2026 Jotheesh Kummathi
+# SPDX-License-Identifier: Apache-2.0
+
+config APP_HEALTH_FORCE_FAIL
+	bool "Force the health check to fail (test images only)"
+	help
+	  The image boots and runs but never confirms itself.
+	  Used to prove that MCUboot rolls back an unconfirmed image.
+
+config APP_HANG
+	bool "Spin forever in main right after boot (test images only)"
+	help
+	  Simulates a hung image. The health thread starves, so the watchdog is
+	  never fed and the image never confirms. Used to prove that the IWDG
+	  reset plus MCUboot revert recovers the board with no outside help.
+
+config APP_HANG_EARLY
+	bool "Spin forever in an init function, before the kernel starts (test images only)"
+	help
+	  The image hangs before main() and before the kit arms its watchdog.
+	  Used to find out whether a watchdog started by MCUboot gets the device
+	  out of that, so that MCUboot can revert the image.
+
+config APP_CHATTER
+	bool "Print one character per millisecond (measurement images only)"
+	help
+	  The console never goes quiet, so a host can time the moment the board
+	  loses power. Used to measure the latency of the power switch in the
+	  power loss tests. The LED does not blink in this mode.
+
+config APP_ERASE_TRACE
+	bool "Print a line when a slot erase request starts and when it is done"
+	default y if SOC_FAMILY_ESPRESSIF_ESP32
+	select MCUMGR_MGMT_NOTIFICATION_HOOKS
+	select MCUMGR_SMP_COMMAND_STATUS_HOOKS
+	help
+	  Lets the test for a reset during an erase show, from console timestamps,
+	  that the reset came between the two lines. On by default on the ESP32,
+	  where the erase is too short to hit with a fixed delay.
+
+config APP_PAD_BYTES
+	int "Bytes of padding to add to the image (measurement images only)"
+	default 0
+	help
+	  Makes the image bigger so that upload and swap time can be measured
+	  for an image that nearly fills the slot.
+
+source "Kconfig.zephyr"
