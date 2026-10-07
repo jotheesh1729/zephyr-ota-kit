@@ -1,0 +1,25 @@
+# Copyright (c) 2026 Jotheesh Kummathi
+# SPDX-License-Identifier: Apache-2.0
+#
+# Optional patches for the west workspace, for "west patch". Not applied by any build.
+# From the west workspace, with KIT the path of this repository:
+#   west patch -l $KIT/zephyr/patches.yml -b $KIT/zephyr/patches -dm modules/hal/espressif apply
+# To take it out again:
+#   git -C modules/hal/espressif apply -R $KIT/zephyr/patches/hal_espressif/esp32-noos-flash-guard-cache-flush.patch
+# Do NOT use "west patch clean" for this module: it also deletes untracked files, and with them
+# the radio blobs. That happened here once, "west blobs fetch hal_espressif" brings them back.
+# See docs/BOARD_ESP32.md, "Carrying the upstream fix".
+patches:
+  - path: hal_espressif/esp32-noos-flash-guard-cache-flush.patch
+    sha256sum: 4a190a68562fd705f5233f8c443bf95624efd677f89c498cd6144fc031b9c649
+    module: modules/hal/espressif
+    author: Jotheesh Kummathi
+    # west patch wants an address here. A placeholder, on purpose.
+    email: nobody@example.invalid
+    date: 2026-10-07
+    upstreamable: true
+    issue: https://github.com/zephyrproject-rtos/zephyr/issues/120719
+    comments: |
+      The two Cache_Flush lines proposed in Zephyr issue 120719, written out as a patch
+      against hal_espressif 5e3b702250. Not this project's idea and not merged upstream
+      when this was written. Drop it once the HAL has the fix.

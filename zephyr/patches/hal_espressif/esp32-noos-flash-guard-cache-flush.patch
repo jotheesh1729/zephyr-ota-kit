@@ -1,0 +1,16 @@
+diff --git a/components/spi_flash/spi_flash_os_func_noos.c b/components/spi_flash/spi_flash_os_func_noos.c
+index 9e0096b35c..67e05b2de7 100644
+--- a/components/spi_flash/spi_flash_os_func_noos.c
++++ b/components/spi_flash/spi_flash_os_func_noos.c
+@@ -37,6 +37,11 @@ static IRAM_ATTR esp_err_t start(void *arg, uint32_t flags)
+ static IRAM_ATTR esp_err_t end(void *arg)
+ {
+ #if CONFIG_IDF_TARGET_ESP32
++    /* A fill cut short by Cache_Read_Disable() can leave a line marked valid:
++     * invalidate before re-enabling, as the ROM flash routines do.
++     */
++    Cache_Flush(0);
++    Cache_Flush(1);
+     Cache_Read_Enable(0);
+     Cache_Read_Enable(1);
+ #else
