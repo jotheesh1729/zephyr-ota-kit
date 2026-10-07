@@ -1,0 +1,91 @@
+# Copyright (c) 2026 Jotheesh Kummathi
+# SPDX-License-Identifier: Apache-2.0
+#
+# Sysbuild options of the OTA kit.
+# Sysbuild applies snippets to every image, so the kit is switched on per image from here,
+# not from a snippet .conf file that MCUboot would also get.
+
+config OTA_KIT
+	bool "Enable the OTA kit in the application image"
+	depends on BOOTLOADER_MCUBOOT
+	help
+	  Sets CONFIG_OTA_KIT=y in the main application. Set by the ota-kit snippet.
+
+config OTA_KIT_TRANSPORT_BLE
+	bool "Use Bluetooth LE as the SMP transport"
+	depends on OTA_KIT
+	help
+	  Sets CONFIG_OTA_KIT_TRANSPORT_BLE=y in the main application instead of the
+	  default UART transport. Set by the ota-kit-ble snippet.
+
+config OTA_KIT_WIFI_UDP
+	bool "Also serve SMP over UDP on Wi-Fi"
+	depends on OTA_KIT
+	help
+	  Sets CONFIG_OTA_KIT_WIFI_UDP=y in the main application. Set by the ota-kit-wifi snippet.
+
+config OTA_KIT_DOWNGRADE_PREVENTION
+	bool "Refuse an image with a lower version than the running one"
+	depends on OTA_KIT
+	help
+	  Sets CONFIG_MCUBOOT_DOWNGRADE_PREVENTION=y in MCUboot, which does the
+	  check, and CONFIG_MCUBOOT_BOOTLOADER_NO_DOWNGRADE=y in the application,
+	  as Zephyr's sysbuild help asks for.
+
+	  The rejection happens at boot, not at upload: an older image is
+	  uploaded and marked for test as usual, then MCUboot erases it and logs
+	  "Image 0 in slot 1 erased due to downgrade prevention". The SMP server
+	  only compares versions when the host asks for it in the upload request.
+
+	  MCUboot compares major, minor and revision of the image version. A
+	  revert of an unconfirmed test image is still done (tested). It does not
+	  stop someone with a debug probe.
+
+	  MCUboot's design.md says this only works with overwrite only updates.
+	  The source of the MCUboot version used here also checks it for the swap
+	  modes, and it was tested with swap using move (docs/RESULTS.md).
+
+	  Set by the ota-kit snippet.
+
+config OTA_KIT_MCUBOOT_CONSOLE_LOG
+	bool "Make MCUboot print its log on the console"
+	depends on OTA_KIT
+	help
+	  Some MCUboot configurations ship with the console and the log switched
+	  off to save space, for example the one for the ESP32. This turns the
+	  serial console and MCUboot's info level log back on. The test scripts
+	  of this project read those lines. It makes MCUboot larger.
+
+config OTA_KIT_MCUBOOT_WATCHDOG_TIMEOUT_MS
+	int "MCUboot watchdog timeout (ms), 0 to keep MCUboot's default"
+	default 0
+	help
+	  MCUboot starts the watchdog and feeds it during a swap. Its default of
+	  300000 ms is more than some watchdogs can do. The STM32L4 independent
+	  watchdog tops out near 32.7 s, refuses the default with error -22, and
+	  MCUboot then runs with no watchdog at all.
+
+	  Set a value under the limit of your watchdog. The ota-kit snippet sets
+	  30000 for disco_l475_iot1. A swap may take longer than this value, it
+	  is fed along the way (measured: a 56 s swap with a 30 s timeout).
+
+	  Left at 0 by default, because not every MCUboot port has this option
+	  (on nRF boards MCUboot feeds the watchdog another way).
+
+config OTA_KIT_MCUBOOT_LOGICAL_SECTOR_SIZE
+	hex "MCUboot logical sector size, 0x0 to use the hardware sectors"
+	default 0x0
+	help
+	  Needed when slot 0 and slot 1 are on flashes with different erase
+	  sizes, for example 2 K pages internally and 4 K sectors on a QSPI flash.
+	  Set it to the larger one. Both slots must be a whole number of logical
+	  sectors, and for swap using move slot 0 needs one sector more than
+	  slot 1. This MCUboot option is marked experimental upstream.
+
+config OTA_KIT_MCUBOOT_MAX_IMG_SECTORS
+	int "Maximum number of sectors per slot, with logical sectors"
+	default 256
+	depends on OTA_KIT_MCUBOOT_LOGICAL_SECTOR_SIZE != 0x0
+	help
+	  MCUboot cannot work this out by itself when logical sectors are used.
+	  Slot size divided by the logical sector size, rounded up to taste.

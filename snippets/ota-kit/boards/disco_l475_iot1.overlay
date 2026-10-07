@@ -1,0 +1,32 @@
+/*
+ * Copyright (c) 2026 Jotheesh Kummathi
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Slot 1 lives on the QSPI flash: 864 K in 4 K sectors = 216 sectors.
+ * Swap using move needs slot 0 to have exactly one sector more.
+ * So slot 0 shrinks from 928 K to 868 K (217 sectors of 4 K).
+ * Applied to the application and to MCUboot (the snippet covers every sysbuild image).
+ */
+&slot0_partition {
+	reg = <0x10000 DT_SIZE_K(868)>;
+};
+
+/* SMP runs on the ST-LINK virtual COM port, the same UART as the console. */
+/ {
+	chosen {
+		zephyr,uart-mcumgr = &usart1;
+	};
+};
+
+/*
+ * An MCU reset does not reset the QSPI flash. If it was erasing, it stays busy and the
+ * next boot cannot talk to it. Send the reset command (0x66, 0x99) at driver init.
+ * Wait: MX25R6435F datasheet rev 1.6, table 13, tREADY2 = 12 ms after a reset during
+ * an erase. 15 ms leaves margin.
+ */
+&mx25r6435f {
+	reset-cmd;
+	reset-cmd-wait = <15000>;
+};

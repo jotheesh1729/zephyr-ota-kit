@@ -1,0 +1,7 @@
+# Copyright (c) 2026 Jotheesh Kummathi
+# SPDX-License-Identifier: Apache-2.0
+#
+# Bluetooth LE as the SMP transport. Use after the ota-kit snippet: -S ota-kit -S ota-kit-ble
+name: ota-kit-ble
+append:
+  SB_EXTRA_CONF_FILE: ota-kit-ble-sb.conf

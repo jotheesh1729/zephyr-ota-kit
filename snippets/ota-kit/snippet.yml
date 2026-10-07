@@ -1,0 +1,17 @@
+# Copyright (c) 2026 Jotheesh Kummathi
+# SPDX-License-Identifier: Apache-2.0
+#
+# Turns the OTA kit on for a sysbuild project: MCUboot, signing mode, and the kit in the application.
+# Board specific parts apply to every image, so MCUboot and the application see the same flash layout.
+name: ota-kit
+append:
+  SB_EXTRA_CONF_FILE: ota-kit-sb.conf
+boards:
+  /disco_l475_iot1(/.*)?/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: boards/disco_l475_iot1.overlay
+      SB_EXTRA_CONF_FILE: boards/disco_l475_iot1-sb.conf
+  /esp32_devkitc.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: boards/esp32_devkitc.overlay
+      SB_EXTRA_CONF_FILE: boards/esp32_devkitc-sb.conf

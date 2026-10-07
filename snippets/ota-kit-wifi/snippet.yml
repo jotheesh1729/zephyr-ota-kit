@@ -1,0 +1,8 @@
+# Copyright (c) 2026 Jotheesh Kummathi
+# SPDX-License-Identifier: Apache-2.0
+#
+# SMP over UDP on Wi-Fi, next to the UART transport. Use after the ota-kit snippet:
+# -S ota-kit -S ota-kit-wifi
+name: ota-kit-wifi
+append:
+  SB_EXTRA_CONF_FILE: ota-kit-wifi-sb.conf

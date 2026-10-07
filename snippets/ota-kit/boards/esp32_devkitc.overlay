@@ -1,0 +1,27 @@
+/*
+ * Copyright (c) 2026 Jotheesh Kummathi
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* SMP runs on the USB serial port of the dev board, the same UART as the console. */
+/ {
+	chosen {
+		zephyr,uart-mcumgr = &uart0;
+	};
+};
+
+/*
+ * The kit's watchdog is the one of timer group 1, in MCUboot and in the application.
+ * The board's default, timer group 0, cannot guard the jump into the application: the
+ * application's early timer init resets that timer group and the watchdog with it
+ * (esp_timer_impl_early_init() in hal_espressif). Measured in docs/BOARD_ESP32.md.
+ */
+&wdt1 {
+	status = "okay";
+};
+
+/ {
+	aliases {
+		watchdog0 = &wdt1;
+	};
+};
