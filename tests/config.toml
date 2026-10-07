@@ -1,0 +1,18 @@
+# Copyright (c) 2026 Jotheesh Kummathi
+# SPDX-License-Identifier: Apache-2.0
+#
+# Which transport the tests and measurements use for SMP: "uart", "ble" or "wifi".
+# Build the matching images first:
+#   uart:  tests/build_images.sh
+#   ble:   VARIANT=ble tests/build_images.sh
+#   wifi:  VARIANT=wifi BOARD=esp32_devkitc/esp32/procpu tests/build_images.sh  (ESP32 only)
+transport = "uart"
+
+# UART of the ST-LINK. Always used to read the boot log, also for SMP when transport = "uart".
+console = "/dev/ttyACM0"
+
+# USB serial port of the ESP32 dev board, used instead of `console` when BOARD=esp32... is set.
+console_esp32 = "/dev/ttyUSB0"
+
+# Advertised name of the board, used when transport = "ble".
+ble_name = "ota-kit"
