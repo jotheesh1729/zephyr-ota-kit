@@ -1,0 +1,5 @@
+# cut 59: swap, rerun, offset 4400, result True
+I: Image index: 0, Swap type: revert
+I: Starting swap using move algorithm.
+I: Image version: v1.0.0
+OTA app v1.0.0, blink 1000 ms, confirmed
