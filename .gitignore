@@ -1,0 +1,7 @@
+build/
+__pycache__/
+# private signing keys never go in git
+keys/*.pem
+!keys/*.pub.pem
+# written by the native_sim sample when it is run from this directory
+flash.bin
