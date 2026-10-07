@@ -1,0 +1,4 @@
+n,case,result,actual
+1,10-reset-in-erase,PASS,"Reset 0.1 s after the erase request. App banner 0.4 s after the reset command, MCUboot abort: no. OTA app v1.0.0, blink 1000 ms, confirmed. Slots: slot0 v1.0.0 active confirmed"
+2,10-reset-in-erase,PASS,"Reset 0.1 s after the erase request. App banner 0.4 s after the reset command, MCUboot abort: no. OTA app v1.0.0, blink 1000 ms, confirmed. Slots: slot0 v1.0.0 active confirmed"
+3,10-reset-in-erase,PASS,"Reset 0.1 s after the erase request. App banner 0.4 s after the reset command, MCUboot abort: no. OTA app v1.0.0, blink 1000 ms, confirmed. Slots: slot0 v1.0.0 active confirmed"

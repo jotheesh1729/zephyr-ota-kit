@@ -1,0 +1,6 @@
+n,case,result,actual
+1,7-downgrade,PASS,"On v2.0.0. v1.0.0 accepted by the SMP server, marked for test. After reset: OTA app v2.0.0, blink 1000 ms, confirmed. Slots: slot0 v2.0.0 active confirmed"
+2,7-downgrade,PASS,"On v2.0.0. v1.0.0 accepted by the SMP server, marked for test. After reset: OTA app v2.0.0, blink 1000 ms, confirmed. Slots: slot0 v2.0.0 active confirmed"
+3,7-downgrade,PASS,"On v2.0.0. v1.0.0 accepted by the SMP server, marked for test. After reset: OTA app v2.0.0, blink 1000 ms, confirmed. Slots: slot0 v2.0.0 active confirmed"
+4,7-downgrade,PASS,"On v2.0.0. v1.0.0 accepted by the SMP server, marked for test. After reset: OTA app v2.0.0, blink 1000 ms, confirmed. Slots: slot0 v2.0.0 active confirmed"
+5,7-downgrade,PASS,"On v2.0.0. v1.0.0 accepted by the SMP server, marked for test. After reset: OTA app v2.0.0, blink 1000 ms, confirmed. Slots: slot0 v2.0.0 active confirmed"

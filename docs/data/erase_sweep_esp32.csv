@@ -1,0 +1,4 @@
+delay_ms,reset_sent_ms_after_start_line,done_line_ms,reset_lands,mcuboot_abort,app_banner_after_reset,slots
+100,103.7,,inside the erase,no,"+0.719 s OTA app v1.0.0, blink 1000 ms, confirmed",slot0 v1.0.0 active confirmed
+300,302.2,,inside the erase,no,"+0.918 s OTA app v1.0.0, blink 1000 ms, confirmed",slot0 v1.0.0 active confirmed
+500,501.2,,inside the erase,no,"+1.117 s OTA app v1.0.0, blink 1000 ms, confirmed",slot0 v1.0.0 active confirmed
