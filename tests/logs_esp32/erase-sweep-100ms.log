@@ -1,0 +1,42 @@
++0.000 s slot erase start
++0.104 s --- reset sent ---
++0.310 s ets Jun  8 2016 00:22:57
++0.310 s 
++0.315 s rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)
++0.320 s configsip: 0, SPIWP:0xee
++0.325 s clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
++0.330 s mode:DIO, clock div:2
++0.330 s load:0x3ffe8008,len:1896
++0.335 s load:0x3ffe8c00,len:6612
++0.335 s load:0x40078000,len:7072
++0.335 s ho 0 tail 12 room 4
++0.335 s load:0x400a0000,len:38420
++0.346 s entry 0x400a1628
++0.351 s I (soc_init): MCUboot 2nd stage bootloader
++0.356 s I (soc_init): compile time Oct  6 2026 22:12:26
++0.356 s W (soc_init): Unicore bootloader
++0.367 s I (soc_init): chip revision: v1.0
++0.367 s I (flash_init): SPI Speed      : 40MHz
++0.372 s I (flash_init): SPI Mode       : DIO
++0.372 s I (flash_init): SPI Flash Size : 4MB
++0.382 s I: Starting bootloader
++0.392 s I: Primary image: magic=unset, swap_type=0x1, copy_done=0x3, image_ok=0x3
++0.397 s I: Secondary image: magic=unset, swap_type=0x1, copy_done=0x3, image_ok=0x3
++0.397 s I: Boot source: none
++0.397 s I: Image index: 0, Swap type: none
++0.647 s I: Bootloader chainload address offset: 0x20000
++0.647 s I: Image version: v1.0.0
++0.652 s I: Jumping to the first image slot
++0.652 s I: br_image_off = 0x20000
++0.657 s I: ih_hdr_size = 0x20
++0.657 s I (boot): Loading image 0 - slot 0 from flash, area id: 2
++0.663 s I (boot): Application start=40083dcch
++0.673 s I (boot): DRAM	: lma=00028d0ch vma=3ffb0000h size=01434h (  5172) load
++0.673 s I (boot): IRAM	: lma=000200a8h vma=40080000h size=08c64h ( 35940) load
++0.683 s I (boot): IROM	: lma=00040000h vma=400d0000h size=073C0h ( 29632) map
++0.688 s I (boot): DROM	: lma=00030000h vma=3f400000h size=01520h (  5408) map
++0.698 s I (boot): libc heap size 168 kB.
++0.698 s I (spi_flash): detected chip: generic
++0.698 s I (spi_flash): flash io: dio
++0.714 s *** Booting Zephyr OS build v4.4.0-13485-g133c2eb7d3cb ***
++0.719 s OTA app v1.0.0, blink 1000 ms, confirmed

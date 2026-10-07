@@ -1,0 +1,43 @@
++0.000 s slot erase start
++0.305 s --- reset sent ---
++0.511 s ets Jun  8 2016 00:22:57
++0.511 s 
++0.516 s rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)
++0.521 s configsip: 0, SPIWP:0xee
++0.526 s clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
++0.526 s mode:DIO, clock div:2
++0.531 s load:0x3ffe8008,len:1896
++0.536 s load:0x3ffe8c00,len:6612
++0.536 s load:0x40078000,len:7072
++0.536 s ho 0 tail 12 room 4
++0.536 s load:0x400a0000,len:38420
++0.547 s entry 0x400a1628
++0.552 s I (soc_init): MCUboot 2nd stage bootloader
++0.557 s I (soc_init): compile time Oct  7 2026 13:23:21
++0.557 s W (soc_init): Unicore bootloader
++0.565 s I (soc_init): chip revision: v1.0
++0.565 s I (flash_init): SPI Speed      : 40MHz
++0.570 s I (flash_init): SPI Mode       : DIO
++0.570 s I (flash_init): SPI Flash Size : 4MB
++0.581 s I: Starting bootloader
++0.591 s I: Primary image: magic=unset, swap_type=0x1, copy_done=0x3, image_ok=0x3
++0.596 s I: Secondary image: magic=unset, swap_type=0x1, copy_done=0x3, image_ok=0x3
++0.601 s I: Boot source: none
++0.601 s I: Image index: 0, Swap type: none
++1.332 s I: Bootloader chainload address offset: 0x20000
++1.337 s I: Image version: v1.0.0
++1.342 s I: Jumping to the first image slot
++1.342 s I: br_image_off = 0x20000
++1.348 s I: ih_hdr_size = 0x20
++1.348 s I (boot): Loading image 0 - slot 0 from flash, area id: 2
++1.353 s I (boot): Application start=40087fa8h
++1.358 s I (boot): DRAM	: lma=0002ebech vma=3ffb0000h size=0332ch ( 13100) load
++1.363 s I (boot): IRAM	: lma=000200a8h vma=40080000h size=0eb44h ( 60228) load
++1.373 s I (boot): IROM	: lma=00060000h vma=400d0000h size=667C0h (419776) map
++1.378 s I (boot): DROM	: lma=00040000h vma=3f400000h size=15000h ( 86016) map
++1.388 s I (boot): libc heap size 54 kB.
++1.388 s I (spi_flash): detected chip: generic
++1.388 s I (spi_flash): flash io: dio
++1.476 s *** Booting Zephyr OS build v4.4.0-13485-g133c2eb7d3cb ***
++1.481 s OTA app v1.0.0, blink 1000 ms, confirmed
++1.481 s watchdog armed, last reset by other cause
