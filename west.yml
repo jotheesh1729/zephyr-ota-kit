@@ -1,0 +1,25 @@
+# Copyright (c) 2026 Jotheesh Kummathi
+# SPDX-License-Identifier: Apache-2.0
+#
+# West manifest, so that this repository can be the manifest repository of a small workspace:
+#
+#   mkdir ws && cd ws && git clone REPLACE_WITH_REPOSITORY_URL ota-kit
+#   west init -l ota-kit && west update --narrow -o=--depth=1
+#
+# Zephyr is pinned to the revision everything here was tested with. Only the modules the
+# native_sim sample needs are fetched. A board build needs its HAL as well, for example
+# hal_stm32 and cmsis_6 for disco_l475_iot1: add them to the allowlist.
+manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: 133c2eb7d3cb4625f74cbeb3e8d99a705b21543d
+      import:
+        name-allowlist:
+          - mcuboot
+          - zcbor
+  self:
+    path: ota-kit

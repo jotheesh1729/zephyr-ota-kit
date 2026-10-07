@@ -1,0 +1,312 @@
+# Copyright (c) 2026 Jotheesh Kummathi
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig OTA_KIT
+	bool "OTA kit: SMP server, health checked confirm, watchdog"
+	depends on BOOTLOADER_MCUBOOT
+	select FLASH
+	select FLASH_MAP
+	select STREAM_FLASH
+	select IMG_MANAGER
+	select NET_BUF
+	select ZCBOR
+	select CRC
+	select MCUMGR
+	select MCUMGR_GRP_IMG
+	select MCUMGR_GRP_OS
+	select MCUMGR_GRP_OS_MCUMGR_PARAMS
+	help
+	  Device side of a signed, dual slot firmware update with rollback:
+	  - an SMP server with the image group (upload, state) and the OS group (reset)
+	  - a health thread that confirms a test image only after the application's
+	    health check returns OK
+	  - a watchdog, so that an image that hangs is reset and reverted by MCUboot
+
+	  The easiest way to turn it on is the "ota-kit" snippet, which also sets
+	  the sysbuild and stack size options. See docs/PORTING.md.
+
+if OTA_KIT
+
+choice OTA_KIT_TRANSPORT
+	prompt "SMP transport"
+	default OTA_KIT_TRANSPORT_UART
+	help
+	  How the host reaches the SMP server.
+
+	  Tested: UART and Bluetooth LE.
+
+	  Experimental, not supported on disco_l475_iot1: Wi-Fi and SMP over UDP.
+	  The eS-WiFi socket driver on that board refuses the recvfrom and sendto
+	  calls that the SMP UDP transport makes. See docs/TRANSPORTS.md. To try
+	  UDP on another board, pick "Set up by the application" and enable
+	  CONFIG_MCUMGR_TRANSPORT_UDP yourself.
+
+config OTA_KIT_TRANSPORT_UART
+	bool "UART"
+	select BASE64
+	select CONSOLE
+	select UART_MCUMGR
+	select MCUMGR_TRANSPORT_UART
+	help
+	  SMP over the UART named by the devicetree chosen node zephyr,uart-mcumgr.
+	  It may be the same UART as the console. No authentication.
+
+	  The UART driver must support interrupts. Where it does not, for example
+	  on native_sim, the build stops with a Kconfig warning about
+	  UART_INTERRUPT_DRIVEN. Pick "Set up by the application" there.
+	  (A "depends on" here would create a Kconfig dependency loop with the
+	  Bluetooth option of this choice, so it is a note and not a check.)
+
+config OTA_KIT_TRANSPORT_BLE
+	bool "Bluetooth LE"
+	select BT
+	select BT_PERIPHERAL
+	select BT_SMP
+	select MCUMGR_TRANSPORT_BT
+	select MCUMGR_TRANSPORT_BT_REASSEMBLY
+	select SETTINGS
+	select BT_SETTINGS
+	select NVS
+	select HWINFO
+	help
+	  SMP over Bluetooth LE. The kit advertises the SMP service, restarts
+	  advertising after a disconnect, and keeps bonds in the settings storage
+	  (NVS in the storage partition).
+
+	  The SMP characteristic then needs an encrypted link, so a central must
+	  pair first. Pairing is "Just Works": it encrypts, it does not prove who
+	  the central is. See docs/TRANSPORTS.md.
+
+	  With sysbuild use the "ota-kit-ble" snippet.
+
+config OTA_KIT_TRANSPORT_CUSTOM
+	bool "Set up by the application"
+	help
+	  The kit enables no MCUmgr transport. The health check, confirm and
+	  watchdog parts still work. Enable a transport yourself, for example the
+	  experimental CONFIG_MCUMGR_TRANSPORT_UDP. Also the choice for boards
+	  whose UART has no interrupt support, such as native_sim.
+
+endchoice
+
+config OTA_KIT_HEALTH_DELAY_S
+	int "Seconds a test image must run before the health check"
+	default 5
+	range 1 3600
+	help
+	  A freshly swapped image runs this long, then the registered health
+	  check is called once. If it returns true the image is confirmed.
+	  Keep it below the watchdog timeout.
+
+config OTA_KIT_WATCHDOG
+	bool "Arm and feed a watchdog"
+	default y if $(dt_alias_enabled,watchdog0)
+	select WATCHDOG
+	help
+	  Arms the watchdog behind the devicetree alias watchdog0 before main()
+	  and feeds it from the health thread. Without it a hung test image is
+	  only reverted after someone resets the board.
+
+	  MCUboot may already have started the same watchdog. On most hardware it
+	  cannot be stopped, which is why the kit takes it over before main().
+
+if OTA_KIT_WATCHDOG
+
+config OTA_KIT_WATCHDOG_TIMEOUT_MS
+	int "Watchdog timeout (ms)"
+	default 10000
+	range 1000 32000 if SOC_SERIES_STM32L4X
+	help
+	  Must be longer than OTA_KIT_HEALTH_DELAY_S plus margin, and within what
+	  the hardware can do. The STM32L4 independent watchdog tops out near
+	  32.7 s (prescaler 256, 12 bit reload, 32 kHz LSI). A larger value makes
+	  wdt_install_timeout() fail with -EINVAL.
+
+config OTA_KIT_WATCHDOG_FEED_MS
+	int "Watchdog feed period (ms)"
+	default 1000
+	help
+	  Period of the health thread. Keep it well below the timeout.
+
+endif # OTA_KIT_WATCHDOG
+
+config OTA_KIT_HEALTH_STACK_SIZE
+	int "Health thread stack size"
+	default 1024
+
+config OTA_KIT_REQUIRE_EXT_FLASH_RESET
+	bool "Fail the build if slot 1 is on a QSPI flash without reset-cmd"
+	default y
+	help
+	  A reset of the MCU does not reset an external flash chip. If the chip
+	  was erasing, it stays busy, and the next boot cannot use it. Measured on
+	  disco_l475_iot1: MCUboot aborts and the board is dead for 30 s.
+
+	  The fix is in the devicetree, not in Kconfig: give the flash node the
+	  properties reset-cmd and reset-cmd-wait, in an overlay that both MCUboot
+	  and the application use. reset-cmd-wait is the reset recovery time during
+	  an erase from the flash datasheet, in microseconds, plus margin
+	  (MX25R6435F: tREADY2 = 12 ms, the kit uses 15000).
+
+	  With this option the build stops if slot1_partition sits on a
+	  st,stm32-qspi-nor flash that has no reset-cmd. Other flash drivers are
+	  not checked.
+
+config OTA_KIT_SIZE_GUARD
+	bool "Fail the build if the image is larger than MCUboot can swap"
+	default y
+	depends on MCUBOOT_BOOTLOADER_MODE_SWAP_USING_MOVE
+	depends on CPU_CORTEX_M
+	help
+	  Only for Cortex-M: the check uses the _flash_used symbol of Zephyr's
+	  Cortex-M linker script. Other architectures, for example the ESP32,
+	  have no such symbol and build their image in another format, so there
+	  is no size guard for them.
+
+	  Zephyr sizes the application by slot 0 alone. With swap using move,
+	  MCUboot can swap at most
+	    min((sectors in slot 0 - 1) x sector size, slot 1 size) - trailer
+	  (MCUboot design.md). Where slot 0 is one sector larger than slot 1,
+	  an image inside the difference builds, signs and uploads, and is then
+	  refused at boot. Seen on disco_l475_iot1 with an 879091 B image against
+	  a limit of 876544 B.
+
+	  This adds a linker assert with that limit, worked out from the slot
+	  sizes in the devicetree, the sector size, and CONFIG_ROM_END_OFFSET.
+	  It does nothing if the sector size is not known (see
+	  OTA_KIT_SWAP_SECTOR_SIZE) or if CONFIG_ROM_END_OFFSET is 0, which is
+	  the case without sysbuild.
+
+config OTA_KIT_SWAP_SECTOR_SIZE
+	hex "Sector size MCUboot swaps with, 0x0 to read it from the devicetree"
+	default 0x0
+	help
+	  Used by the size guard. With 0x0 the erase-block-size of the slot 0
+	  flash is used. Set it to MCUboot's logical sector size when that is in
+	  use. With sysbuild the kit does this from
+	  SB_CONFIG_OTA_KIT_MCUBOOT_LOGICAL_SECTOR_SIZE.
+
+config OTA_KIT_STRICT_WARNINGS
+	bool "Build the kit and the application with extended compiler warnings"
+	help
+	  Adds the warning sets Zephyr uses for its W=1 and W=2 build options to
+	  the kit's sources and to the application's sources, not to Zephyr or
+	  MCUboot. For checking the code, see docs/QUALITY.md. Warnings reported
+	  inside Zephyr headers are Zephyr's.
+
+config OTA_KIT_WIFI_UDP
+	bool "Also serve SMP over UDP on Wi-Fi, station mode"
+	select NETWORKING
+	select NET_IPV4
+	select NET_UDP
+	select NET_SOCKETS
+	select NET_DHCPV4
+	select NET_MGMT
+	select NET_MGMT_EVENT
+	select WIFI
+	select MCUMGR_TRANSPORT_UDP
+	select SETTINGS
+	select NVS
+	select WIFI_CREDENTIALS
+	select SHELL
+	select SHELL_BACKEND_DUMMY
+	select NET_L2_WIFI_SHELL
+	select MCUMGR_GRP_SHELL
+	select MCUMGR_MGMT_NOTIFICATION_HOOKS
+	select MCUMGR_SMP_COMMAND_STATUS_HOOKS
+	help
+	  Adds Zephyr's SMP UDP transport (port 1337) to the transport chosen above
+	  and joins a Wi-Fi network that is stored on the board. Tried on an ESP32
+	  only, see docs/BOARD_ESP32.md.
+
+	  SMP over UDP has no encryption and no authentication. Anyone on the same
+	  network can upload, erase slot 1 and reset. See docs/HAZARDS.md.
+
+	  The network name and passphrase are stored on the board in plain text
+	  (wifi_credentials, settings). They are written once, with the shell
+	  command "wifi cred add" over SMP, see scripts/wifi_provision.py. After
+	  that the kit refuses SMP shell commands until the storage is erased.
+
+config OTA_KIT_WIFI_START_DELAY_MS
+	int "Wait before the first Wi-Fi connect request, in ms"
+	depends on OTA_KIT_WIFI_UDP
+	default 1000
+
+config OTA_KIT_WIFI_LAYOUT_PAD_WORDS
+	int "Unused data words in the Wi-Fi part of the kit"
+	depends on OTA_KIT_WIFI_UDP
+	range 0 64
+	default 1
+	help
+	  Workaround for an open defect seen on the ESP32, not a fix. An image
+	  whose link layout is unlucky aborts in the early flash init, before
+	  main(). Changing this number moves the layout. If an image prints
+	  "Failed to init flash chip" at boot, try another value. 0 adds nothing.
+	  See docs/BOARD_ESP32.md.
+
+config OTA_KIT_BLE_DEVICE_ADDR_FROM_CHIP_ID
+	bool "Use a fixed Bluetooth address made from the chip ID"
+	depends on OTA_KIT_TRANSPORT_BLE
+	default n if SOC_FAMILY_ESPRESSIF_ESP32
+	default y
+	help
+	  Off by default on ESP32: its controller has a factory address and no vendor
+	  command to write another one, bt_enable() then fails with -ENOTSUP.
+
+	  Bonds only survive a reset if the address does. Without privacy, Zephyr
+	  creates a new random address on every boot and does not store it. With
+	  this option the kit sets a public address built from the unique chip ID
+	  before bt_enable(). The address is not from a registered address block:
+	  fine on a bench, not for a product.
+
+endif # OTA_KIT
+
+if OTA_KIT_WIFI_UDP
+
+# The shell is only there for "wifi cred add" over SMP. It must not take the console UART.
+config SHELL_BACKEND_SERIAL
+	default n
+
+config NET_IPV6
+	default n
+
+endif # OTA_KIT_WIFI_UDP
+
+# Defaults for Zephyr options when the kit is on. Module Kconfig files are read before the
+# definitions in Zephyr, so a default given here wins. An application can still set its own value.
+
+if OTA_KIT
+
+# Stack sizes from the Zephyr smp_svr sample
+config SYSTEM_WORKQUEUE_STACK_SIZE
+	default 2304
+
+config MAIN_STACK_SIZE
+	default 2176
+
+# One SMP upload request is 5 lines on the UART and Zephyr keeps 2 line buffers by default.
+# On an ESP32 a line was dropped now and then: 3 of 40 uploads stalled with 2 buffers,
+# 0 of 20 with 8. See docs/BOARD_ESP32.md. The STM32 was tested with the default.
+config UART_MCUMGR_RX_BUF_COUNT
+	default 8 if SOC_FAMILY_ESPRESSIF_ESP32
+
+endif # OTA_KIT
+
+if OTA_KIT_TRANSPORT_BLE
+
+config BT_DEVICE_NAME
+	default "ota-kit"
+
+# Larger ATT MTU. Without data length extension the link layer still carries 27 byte
+# packets, but fewer ATT round trips are needed. Measured in docs/TRANSPORTS.md.
+config BT_L2CAP_TX_MTU
+	default 247
+
+config BT_BUF_ACL_RX_SIZE
+	default 251
+
+choice MCUMGR_TRANSPORT_BT_PERM
+	default MCUMGR_TRANSPORT_BT_PERM_RW_ENCRYPT
+endchoice
+
+endif # OTA_KIT_TRANSPORT_BLE
