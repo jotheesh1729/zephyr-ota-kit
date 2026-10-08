@@ -24,6 +24,12 @@ config OTA_KIT_WIFI_UDP
 	help
 	  Sets CONFIG_OTA_KIT_WIFI_UDP=y in the main application. Set by the ota-kit-wifi snippet.
 
+config OTA_KIT_WIFI_DIAL
+	bool "Also serve SMP over a UDP socket that the device opens to a host"
+	depends on OTA_KIT
+	help
+	  Sets CONFIG_OTA_KIT_WIFI_DIAL=y in the main application. Set by the ota-kit-wifi-dial snippet.
+
 config OTA_KIT_DOWNGRADE_PREVENTION
 	bool "Refuse an image with a lower version than the running one"
 	depends on OTA_KIT

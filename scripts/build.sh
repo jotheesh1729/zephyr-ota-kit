@@ -29,7 +29,13 @@ case "$BOARD" in
 esac
 DIR="${PRE}v$VER"
 if [ "$VARIANT" = wifi ]; then
-  WEST_ARGS="$WEST_ARGS -S ota-kit-wifi" DIR="${PRE}wifi-v$VER"
+  DIR="${PRE}wifi-v$VER"
+  case "$BOARD" in
+    esp32*) WEST_ARGS="$WEST_ARGS -S ota-kit-wifi" ;;
+    # eS-WiFi and similar: the device dials the host in OTA_HOST_IP, see scripts/udp_relay.py
+    *) WEST_ARGS="$WEST_ARGS -S ota-kit-wifi-dial"
+       CMAKE_ARGS="$CMAKE_ARGS -DCONFIG_OTA_KIT_WIFI_DIAL_HOST=\"${OTA_HOST_IP:?set OTA_HOST_IP to the address of the host}\"" ;;
+  esac
 fi
 if [ "$VARIANT" = ble ]; then
   WEST_ARGS="$WEST_ARGS -S ota-kit-ble" DIR="${PRE}ble-v$VER"

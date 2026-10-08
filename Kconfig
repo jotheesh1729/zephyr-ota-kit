@@ -35,11 +35,10 @@ choice OTA_KIT_TRANSPORT
 
 	  Tested: UART and Bluetooth LE.
 
-	  Experimental, not supported on disco_l475_iot1: Wi-Fi and SMP over UDP.
-	  The eS-WiFi socket driver on that board refuses the recvfrom and sendto
-	  calls that the SMP UDP transport makes. See docs/TRANSPORTS.md. To try
-	  UDP on another board, pick "Set up by the application" and enable
-	  CONFIG_MCUMGR_TRANSPORT_UDP yourself.
+	  Wi-Fi comes on top of this choice: OTA_KIT_WIFI_UDP for drivers with a
+	  full socket interface (tested on an ESP32), OTA_KIT_WIFI_DIAL for
+	  drivers that only do send and recv on a connected socket, such as
+	  eS-WiFi on disco_l475_iot1. See docs/TRANSPORTS.md.
 
 config OTA_KIT_TRANSPORT_UART
 	bool "UART"
@@ -227,9 +226,83 @@ config OTA_KIT_WIFI_UDP
 	  command "wifi cred add" over SMP, see scripts/wifi_provision.py. After
 	  that the kit refuses SMP shell commands until the storage is erased.
 
+config OTA_KIT_WIFI_DIAL
+	bool "Also serve SMP over a connected UDP socket that the device opens to a host"
+	depends on !OTA_KIT_WIFI_UDP
+	select NETWORKING
+	select NET_IPV4
+	select NET_UDP
+	select NET_SOCKETS
+	select NET_MGMT
+	select NET_MGMT_EVENT
+	select WIFI
+	select SETTINGS
+	select NVS
+	select WIFI_CREDENTIALS
+	select SHELL
+	select SHELL_BACKEND_DUMMY
+	select NET_L2_WIFI_SHELL
+	select MCUMGR_GRP_SHELL
+	select MCUMGR_MGMT_NOTIFICATION_HOOKS
+	select MCUMGR_SMP_COMMAND_STATUS_HOOKS
+	help
+	  For Wi-Fi drivers whose sockets only support send and recv without an
+	  address, such as the eS-WiFi driver of disco_l475_iot1. Zephyr's SMP UDP
+	  transport does not work on those.
+
+	  The device joins the stored network, opens a UDP socket to
+	  OTA_KIT_WIFI_DIAL_HOST and serves SMP on it. scripts/udp_relay.py is the
+	  host side. No encryption and no authentication: whoever answers at that
+	  address, or can send from it, can upload, erase slot 1 and reset.
+
+	  The network is stored as with OTA_KIT_WIFI_UDP, see there.
+
+if OTA_KIT_WIFI_DIAL
+
+config OTA_KIT_WIFI_DIAL_HOST
+	string "IPv4 address of the host the device dials"
+	default ""
+
+config OTA_KIT_WIFI_DIAL_PORT
+	int "UDP port on the host"
+	default 1338
+
+config OTA_KIT_WIFI_DIAL_MTU
+	int "Largest SMP packet on this transport, in bytes"
+	default 384
+	help
+	  Must fit one datagram of the Wi-Fi module and one SMP buffer
+	  (MCUMGR_TRANSPORT_NETBUF_SIZE, 384 by default).
+
+config OTA_KIT_WIFI_DIAL_REQUEST_MS
+	int "Drop a request that is not complete this long after its first bytes, in ms"
+	default 1000
+	help
+	  The Wi-Fi module can deliver one datagram in pieces. A lost piece must not
+	  block the requests that follow.
+
+config OTA_KIT_WIFI_DIAL_POLL_MS
+	int "How long one wait for data from the Wi-Fi module lasts, in ms"
+	default 100
+
+config OTA_KIT_WIFI_DIAL_HELLO_MS
+	int "Send a hello to the host when nothing arrived for this long, in ms"
+	default 2000
+
+config OTA_KIT_WIFI_DIAL_PROBE
+	bool "Before serving SMP, try one TCP and one UDP echo on port + 1 and print the result"
+	help
+	  A test aid for a new Wi-Fi driver. Needs an echo server on the host.
+
+config OTA_KIT_WIFI_DIAL_STACK_SIZE
+	int "Stack size of the dial thread"
+	default 2048
+
+endif # OTA_KIT_WIFI_DIAL
+
 config OTA_KIT_WIFI_START_DELAY_MS
 	int "Wait before the first Wi-Fi connect request, in ms"
-	depends on OTA_KIT_WIFI_UDP
+	depends on OTA_KIT_WIFI_UDP || OTA_KIT_WIFI_DIAL
 	default 1000
 
 config OTA_KIT_WIFI_LAYOUT_PAD_WORDS
@@ -261,7 +334,7 @@ config OTA_KIT_BLE_DEVICE_ADDR_FROM_CHIP_ID
 
 endif # OTA_KIT
 
-if OTA_KIT_WIFI_UDP
+if OTA_KIT_WIFI_UDP || OTA_KIT_WIFI_DIAL
 
 # The shell is only there for "wifi cred add" over SMP. It must not take the console UART.
 config SHELL_BACKEND_SERIAL
@@ -270,7 +343,7 @@ config SHELL_BACKEND_SERIAL
 config NET_IPV6
 	default n
 
-endif # OTA_KIT_WIFI_UDP
+endif # OTA_KIT_WIFI_UDP || OTA_KIT_WIFI_DIAL
 
 # Defaults for Zephyr options when the kit is on. Module Kconfig files are read before the
 # definitions in Zephyr, so a default given here wins. An application can still set its own value.

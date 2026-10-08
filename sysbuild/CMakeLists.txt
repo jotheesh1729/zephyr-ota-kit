@@ -20,6 +20,10 @@ function(ota_kit_pre_cmake)
     set_config_bool(${DEFAULT_IMAGE} CONFIG_OTA_KIT_WIFI_UDP y)
   endif()
 
+  if(SB_CONFIG_OTA_KIT_WIFI_DIAL)
+    set_config_bool(${DEFAULT_IMAGE} CONFIG_OTA_KIT_WIFI_DIAL y)
+  endif()
+
   if(SB_CONFIG_OTA_KIT_DOWNGRADE_PREVENTION)
     set_config_bool(mcuboot CONFIG_MCUBOOT_DOWNGRADE_PREVENTION y)
     set_config_bool(${DEFAULT_IMAGE} CONFIG_MCUBOOT_BOOTLOADER_NO_DOWNGRADE y)

@@ -1,0 +1,9 @@
+# Copyright (c) 2026 Jotheesh Kummathi
+# SPDX-License-Identifier: Apache-2.0
+#
+# SMP over a connected UDP socket that the device opens to a host, next to the UART transport.
+# For Wi-Fi drivers that only support send and recv without an address, such as eS-WiFi.
+# Use after the ota-kit snippet: -S ota-kit -S ota-kit-wifi-dial
+name: ota-kit-wifi-dial
+append:
+  SB_EXTRA_CONF_FILE: ota-kit-wifi-dial-sb.conf

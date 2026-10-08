@@ -11,6 +11,7 @@ Needs: source ~/zephyrproject/.venv/bin/activate
 import argparse
 import asyncio
 import contextlib
+import os
 import sys
 import time
 
@@ -27,6 +28,12 @@ BOOT_TIMEOUT_S = 120  # swap + boot + health check window
 
 def log(msg):
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
+
+
+# Resend an unanswered UDP request after this many seconds, 0 for never. Used with the
+# dial-out transport on the eS-WiFi module, which loses a datagram now and then.
+UDP_RETRY_S = float(os.environ.get("OTA_UDP_RETRY_S", "0"))
+UDP_RESENDS = 5
 
 
 def udp_transport():
@@ -51,7 +58,27 @@ def udp_transport():
                     return frame
                 log(f"  host: DUPLICATE or late UDP answer dropped, sequence {frame[6]}")
 
-    return DropStale()
+        async def send_and_receive(self, data):
+            """With OTA_UDP_RETRY_S set: send a request again when no answer came in that time.
+
+            UDP loses datagrams and SMP has no retransmission of its own. Not for the two
+            requests that start a slot erase, which can take longer than any sensible retry
+            time: image erase, and the first chunk of an upload (CBOR "off": 0).
+            """
+            slow = (data[5] == 1 and data[7] == 5) or b"coff\x00" in data
+            if UDP_RETRY_S <= 0 or slow:
+                return await super().send_and_receive(data)
+            for _ in range(UDP_RESENDS):
+                await self.send(data)
+                try:
+                    return await asyncio.wait_for(self.receive(), UDP_RETRY_S)
+                except asyncio.TimeoutError:
+                    log(f"  host: RESEND, no UDP answer in {UDP_RETRY_S} s, sequence {data[6]}")
+            await self.send(data)
+            return await self.receive()  # the caller's timeout ends this
+
+    # OTA_UDP_MTU: largest datagram to send. The dial-out transport of the kit takes 384.
+    return DropStale(mtu=int(os.environ.get("OTA_UDP_MTU", "1500")))
 
 
 async def wait_reachable(client, seconds=40.0):
@@ -118,8 +145,24 @@ def fmt(images):
     )
 
 
-async def upload_and_reset(target, image):
-    """Returns upload time in seconds."""
+def drain_console(port):
+    """Read and log what the console adapter still holds, until it is quiet for 0.3 s.
+
+    With SMP on another link nobody reads the console during an upload. Old lines would
+    otherwise be taken for the boot that follows the reset. A line here also shows that the
+    board printed something during the upload, for example because it restarted.
+    """
+    with serial.Serial(port, 115200, timeout=0.3) as s:
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            raw = s.readline()
+            if not raw:
+                break
+            log(f"  old console line, not part of the boot below: {raw.decode(errors='replace').strip()}")
+
+
+async def upload_and_reset(target, image, before_reset=None):
+    """Returns upload time in seconds. `before_reset` is called just before the reset request."""
     async with session(target) as client:
         log(f"before: {fmt((await smp(client, ImageStatesRead())).images)}")
 
@@ -138,6 +181,8 @@ async def upload_and_reset(target, image):
         await smp(client, ImageStatesWrite(hash=new.hash, confirm=False))
         log(f"slot 1 v{new.version} marked for test")
 
+        if before_reset:
+            before_reset()
         await smp(client, ResetWrite())
         log("reset sent")
     return upload_s
@@ -186,7 +231,9 @@ def run(target, path, console="/dev/ttyACM0"):
     log(f"image {path}, {len(image)} B")
 
     t_start = time.monotonic()
-    upload_s = asyncio.run(upload_and_reset(target, image))
+    # SMP on the console UART reads everything itself. Otherwise empty the console first.
+    drain = None if target == console else (lambda: drain_console(console))
+    upload_s = asyncio.run(upload_and_reset(target, image, drain))
     lines, swap_s = watch_boot(console)
     confirmed = any(CONFIRM_LINE in line for line in lines)
     total_s = time.monotonic() - t_start

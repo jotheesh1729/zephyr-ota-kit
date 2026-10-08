@@ -8,6 +8,11 @@ if(CONFIG_OTA_KIT)
   zephyr_library_sources(src/ota_kit.c)
   zephyr_library_sources_ifdef(CONFIG_OTA_KIT_TRANSPORT_BLE src/ota_kit_ble.c)
   zephyr_library_sources_ifdef(CONFIG_OTA_KIT_WIFI_UDP src/ota_kit_wifi.c)
+  if(CONFIG_OTA_KIT_WIFI_DIAL)
+    zephyr_library_sources(src/ota_kit_wifi.c src/ota_kit_wifi_dial.c)
+    # smp_rx_req() and smp_packet_alloc() are in a header that Zephyr keeps for its own transports
+    zephyr_library_include_directories(${ZEPHYR_BASE}/subsys/mgmt/mcumgr/transport/include)
+  endif()
   zephyr_linker_sources_ifdef(CONFIG_OTA_KIT_SIZE_GUARD SECTIONS linker/size_guard.ld)
 
   if(CONFIG_OTA_KIT_STRICT_WARNINGS)

@@ -26,7 +26,7 @@ from smp import packet as smppacket
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 from ota_update import (  # noqa: E402
-    fmt, log, read_slots, session, smp, upload_and_reset, watch_boot)
+    drain_console, fmt, log, read_slots, session, smp, upload_and_reset, watch_boot)
 from smpclient.requests.image_management import ImageErase  # noqa: E402
 from smpclient.requests.os_management import ResetWrite  # noqa: E402
 
@@ -145,8 +145,10 @@ def ble_pair():
 def baseline():
     """Known good start: internal flash wiped, MCUboot + v1.0.0 flashed, slot 1 erased."""
     log("--- baseline: mass erase, flash MCUboot + v1.0.0, erase slot 1")
+    # Wi-Fi: the stored network is in the last 32 K of the flash, so erase below it only
+    erase = "flash erase_address 0x08000000 0xF8000" if WIFI else "stm32l4x mass_erase 0"
     flash = lambda: openocd(  # noqa: E731
-        "init", "reset halt", "stm32l4x mass_erase 0",
+        "init", "reset halt", erase,
         f"program {BASE}/mcuboot/zephyr/zephyr.hex verify",
         f"program {BASE}/app/zephyr/zephyr.signed.hex verify",
         "reset run", "shutdown")
@@ -157,7 +159,8 @@ def baseline():
                           trigger=flash)
     if WIFI:  # the board has to be at the address the test was given
         joined = next((x for x in lines if "WIFI: joined" in x), "no join line")
-        assert f"IP {TARGET[4:]}," in joined, f"board not at {TARGET[4:]}: {joined}"
+        # ESP32: the address the test was given. STM32: the test talks to scripts/udp_relay.py
+        assert not ESP or f"IP {TARGET[4:]}," in joined, f"board not at {TARGET[4:]}: {joined}"
     if BLE:
         time.sleep(3)  # let the board start advertising
         ble_pair()
@@ -170,7 +173,8 @@ def baseline():
 def stage(image):
     """Upload, mark for test, reset. Returns (boot lines until app banner, upload error or None)."""
     try:
-        asyncio.run(upload_and_reset(TARGET, (IMG / image).read_bytes()))
+        drain = None if TARGET == PORT else (lambda: drain_console(PORT))
+        asyncio.run(upload_and_reset(TARGET, (IMG / image).read_bytes(), drain))
         err, trigger = None, None
     except Exception as e:  # upload or test request refused by the running app
         # keep the tail of the message, that is where the SMP error code is

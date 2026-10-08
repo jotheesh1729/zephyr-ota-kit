@@ -36,11 +36,20 @@ static void on_ip(struct net_mgmt_event_callback *cb, uint64_t event, struct net
 
 	ARG_UNUSED(cb);
 
+#ifdef CONFIG_NET_DHCPV4
 	if (event == NET_EVENT_IPV4_DHCP_BOUND) {
 		printk("WIFI: joined, IP %s, %u ms after boot\n",
 		       net_addr_ntop(AF_INET, &iface->config.dhcpv4.requested_ip, ip, sizeof(ip)),
 		       k_uptime_get_32());
 	}
+#else /* the Wi-Fi module does DHCP itself and the driver adds the address */
+	const struct net_in_addr *addr = net_if_ipv4_get_global_addr(iface, NET_ADDR_PREFERRED);
+
+	if ((event == NET_EVENT_IPV4_ADDR_ADD) && (addr != NULL)) {
+		printk("WIFI: joined, IP %s, %u ms after boot\n",
+		       net_addr_ntop(AF_INET, addr, ip, sizeof(ip)), k_uptime_get_32());
+	}
+#endif
 }
 
 /* Set at boot. SMP shell commands exist only to store the first network. */
@@ -81,7 +90,8 @@ static void wifi_thread(void *a, void *b, void *c)
 #endif
 	shell_locked = !wifi_credentials_is_empty();
 	mgmt_callback_register(&shell_lock_cb);
-	net_mgmt_init_event_callback(&ip_cb, on_ip, NET_EVENT_IPV4_DHCP_BOUND);
+	net_mgmt_init_event_callback(&ip_cb, on_ip, COND_CODE_1(CONFIG_NET_DHCPV4,
+				     (NET_EVENT_IPV4_DHCP_BOUND), (NET_EVENT_IPV4_ADDR_ADD)));
 	net_mgmt_add_event_callback(&ip_cb);
 
 	if (!shell_locked) {
