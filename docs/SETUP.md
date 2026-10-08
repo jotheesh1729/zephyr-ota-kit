@@ -268,5 +268,5 @@ Sizes with the watchdog, health thread and reset cause readout (from build outpu
 | `samples/minimal` for `native_sim/native/64` | built and started |
 | `west flash` and `scripts/ota_update.py` on the STM32 | **not run** in this check. Run from a fresh clone once before, with an earlier version of the tree |
 | `west flash`, `scripts/wifi_provision.py`, `scripts/ota_update.py --udp` on the ESP32 | **not run** from a fresh clone. The same scripts were used for every Wi-Fi result |
-| An ESP32 image built with the patch, on the board | **not run**, apart from one boot test of one image. The Wi-Fi results are from builds without the patch |
+| An ESP32 image built with the patch, on the board | Run later from the working repository, not from a fresh clone: failure suite 10 of 10 and 5 of 5 update runs. See [BOARD_ESP32.md](BOARD_ESP32.md), "Carrying the upstream fix". Most Wi-Fi results are from builds without the patch |
 

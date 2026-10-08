@@ -19,7 +19,10 @@ Files without a suffix hold the latest run and are overwritten by the next one.
 | `esp32_uart_soak_open_a.csv`, `esp32_uart_soak_open_b.csv` | ESP32, 40 soak uploads each: current port open, and DTR and RTS released before the open | BOARD_ESP32.md, "Port open and connect failures" |
 | `update_runs_wifi_esp32.csv` | ESP32, 30 update runs over Wi-Fi: 10 from the first Wi-Fi session, 20 from the second Wi-Fi session | BOARD_ESP32.md, "Wi-Fi results" |
 | `update_runs_wifi_esp32_first_attempt.csv` | The same, first attempt: 8 runs marked failed by a mistake in the host script, the updates had worked | BOARD_ESP32.md, "Wi-Fi results" |
+| `update_runs_wifi_esp32_patched.csv` | ESP32, 5 update runs over Wi-Fi on a build with the HAL patch | BOARD_ESP32.md, "Carrying the upstream fix" |
 | `erase_sweep_wifi_esp32.csv` | ESP32, erase asked for over UDP, reset 100, 300 and 500 ms into it | BOARD_ESP32.md, "More Wi-Fi evidence" |
+| `update_runs_wifi.csv` | STM32 over Wi-Fi with the dial-out transport, second series of 10, 7 confirmed | TRANSPORTS.md, "Wi-Fi on the STM32 board" |
+| `update_runs_wifi_first_series.csv` | The same, first series: 9 confirmed, run 10 not valid | TRANSPORTS.md |
 | `erase_sweep_esp32.csv` | ESP32, reset 100, 300 and 500 ms into a slot 1 erase | BOARD_ESP32.md |
 | `failure_runs_esp32_case10.csv`, `failure_runs_esp32_case7.csv` | ESP32: case 10 three times, case 7 five times, before slot 0 validation was turned on | BOARD_ESP32.md |
 | `powerloss_latency.csv` | 10 runs, `OFF` command to console silence | The power loss tests, POWERLOSS.md |

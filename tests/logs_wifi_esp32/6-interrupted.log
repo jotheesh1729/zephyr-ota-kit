@@ -28,9 +28,9 @@ I: Jumping to the first image slot
 I: br_image_off = 0x20000
 I: ih_hdr_size = 0x20
 I (boot): Loading image 0 - slot 0 from flash, area id: 2
-I (boot): Application start=40087fa8h
-I (boot): DRAM	: lma=0002ebech vma=3ffb0000h size=0334ch ( 13132) load
-I (boot): IRAM	: lma=000200a8h vma=40080000h size=0eb44h ( 60228) load
+I (boot): Application start=40087fb8h
+I (boot): DRAM	: lma=0002ebfch vma=3ffb0000h size=0334ch ( 13132) load
+I (boot): IRAM	: lma=000200a8h vma=40080000h size=0eb54h ( 60244) load
 I (boot): IROM	: lma=00060000h vma=400d0000h size=667C0h (419776) map
 I (boot): DROM	: lma=00040000h vma=3f400000h size=15040h ( 86080) map
 I (boot): libc heap size 54 kB.

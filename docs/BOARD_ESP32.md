@@ -80,7 +80,13 @@ You need, in addition to the list in the README:
 
    The last line must be `RESULT OK: running v1.1.0`.
 
-Which steps were run: steps 1 to 4 from a new clone on 2026-10-07, with no hardware. Steps 5 to 7 were run on the board during the tests, with builds that did not have the patch. An image with the patch started one time on the board. Not run: steps 5 to 7 from a new clone.
+**WARNING: Erase the stored network before you give the board to another person.** This command erases the storage partition only. The firmware stays.
+
+```sh
+esptool --chip esp32 --port /dev/ttyUSB0 erase-region 0x3b0000 0x30000
+```
+
+Which steps were run: steps 1 to 4 from a new clone on 2026-10-07, with no hardware. Steps 5 and 6 were run on the board with builds that did not have the patch. Step 7 was run with builds that had the patch: 5 of 5 updates, and the failure suite passed 10 of 10. The erase command was run on the board, and the partition was then empty. Not run: step 5 with `--erase` and step 6 for a build with the patch, and steps 5 to 7 from a new clone.
 
 ## Summary
 
@@ -533,6 +539,7 @@ Both images fit their slots. The Wi-Fi image is 521 K larger.
 
 - Kit option `OTA_KIT_WIFI_UDP`, snippet `ota-kit-wifi`, `VARIANT=wifi` in `scripts/build.sh`. It adds SMP over UDP. **UART stays the console and stays an SMP transport.**
 - `src/ota_kit_wifi.c`: joins a network stored on the board and prints `WIFI: joined, IP ..., ... ms after boot`.
+- **Stored network settings are in the storage partition of the board, 192 K at 0x3b0000. Erase that partition, or the full flash, before the board is shared**: `esptool --chip esp32 --port /dev/ttyUSB0 erase-region 0x3b0000 0x30000`. Done on 2026-10-07 for the board used here, firmware kept: the partition then read back as 0xFF in every byte, with no printable string, and the board printed `WIFI: no stored network`.
 - The network name and passphrase are **not in the build and not in this repository**. `scripts/wifi_provision.py` asks for them without echo, or reads two environment variables, and sends them to the board over SMP on the UART as the shell command `wifi cred add`. The board keeps them in its settings storage (Zephyr `wifi_credentials`), in plain text.
 - A board that boots with a stored network refuses SMP shell commands (`MGMT_ERR_EACCESSDENIED`, checked with a dummy entry: return code 11). To store another network, erase the flash.
 - Test baseline for Wi-Fi: everything below the storage partition is erased, not the whole chip, so the stored network survives. Checked with the dummy entry.
@@ -724,6 +731,26 @@ No reset from the host in either run.
 - What the kit carries instead, **not applied by any build**: `zephyr/patches.yml` and `zephyr/patches/hal_espressif/esp32-noos-flash-guard-cache-flush.patch`, for Zephyr's own `west patch` command. The command line is in the yml file. Applied once here: `1 patches applied successfully`, the two lines were in the HAL file.
 - Cost: one command after every `west update`, a patched HAL in a shared workspace, and a patch to drop when the HAL gets the fix. The same two lines made the failing layout boot in the abort before main test. That test was not repeated through `west patch`.
 - A warning from doing it: `west patch clean` also deleted the radio blobs of the HAL, they are untracked files. They were fetched again. The yml file says how to take the patch out without that command.
+- **The patched build on the board, 2026-10-07.** Built by the README steps: blobs fetched, `west patch ... apply`, `scripts/build.sh` for 1.0.0 and 1.1.0, the doctor (11 PASS, 8 INFO, 1 WARN, 0 FAIL, 3 UNKNOWN). Two steps were left out on purpose, `west flash --erase` and `scripts/wifi_provision.py`: the board was flashed without a full erase so that the stored network stayed.
+  - The two `Cache_Flush` calls are in every application image. They are not in MCUboot: MCUboot does not link that function.
+  - The patch does not move the code: each image returns to the same address as its build without the patch.
+  - All nine test images started once before the suite. No early boot abort. The image with the wrong key was refused by MCUboot and the early hang image printed nothing, as intended.
+
+  | | Without the patch | With the patch |
+  |---|---|---|
+  | Failure suite | 10 of 10 (third pass) | 10 of 10 |
+  | Case 8, hang in `main()` | reset after 10.1 s | reset after 10.1 s |
+  | Case 9, hang before `main()` | reset 29.3 s after the jump | reset 29.3 s after the jump |
+  | Update runs | 30 of 30 | 5 of 5, `docs/data/update_runs_wifi_esp32_patched.csv` |
+  | Upload, 682 K | 7.13 to 9.39 s, median 7.82 s | 7.37 to 10.63 s, median 7.85 s |
+  | MCUboot and swap | 17.10 to 17.17 s, median 17.14 s | 17.19 to 17.24 s, median 17.21 s |
+  | Upload start to confirmed | 30.13 to 32.32 s, median 31.03 s | 30.85 to 34.87 s, median 31.17 s |
+  | Early boot abort | once, in one build | none |
+  | Unanswered request over the network | 0 | 0 |
+
+  **No difference in behaviour was found.** The swap time is 0.05 to 0.1 s longer in these 5 runs, and one upload took 10.6 s. Five runs are too few to say more.
+  One `esptool` write failed during the boot checks and worked when repeated. Two runs of repeated console lines after an `esptool` flash were logged in the suite. Both are known events of the serial link, not of the network.
+  The patch was then taken out of the workspace with `git apply -R`: the HAL tree was unchanged afterwards and the radio files were still there.
 - A patch step inside the build was not built. The function is `static` in the HAL file, so it cannot be replaced at link time, and swapping a source file of the HAL's own library from a module is not simple.
 - The extra data word (`CONFIG_OTA_KIT_WIFI_LAYOUT_PAD_WORDS`) stays, and stays **fragile**: it moves the layout, it does not remove the fault. With the watchdog setup above, an image that still hits the fault as an update is now reverted without help.
 
