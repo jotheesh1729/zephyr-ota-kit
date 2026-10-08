@@ -1,0 +1,5 @@
+: Bootloader chainload address offset: 0x10000
+I: Image version: v1.0.0
+I: Jumping to the first image slot
+*** Booting Zephyr OS build v4.4.0-13485-g133c2eb7d3cb ***
+OTA app v1.0.0, blink 1000 ms, confirmed

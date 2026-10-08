@@ -12,8 +12,9 @@ Neither radio is part of the default build.
 |---|---|---|
 | UART (ST-LINK VCP) | Tested | Full failure suite and 20 measured runs, see RESULTS.md |
 | BLE (SPBTLE-RF module) | Tested | Full failure suite once and 20 measured runs over an encrypted link (the first BLE series) |
-| Wi-Fi driver (ISM43362 module) | Partial | Module answers and scans. Joining a network was not tested |
-| SMP over UDP on that Wi-Fi driver | Not working | The driver does not support the socket calls the SMP UDP transport makes |
+| Wi-Fi driver (ISM43362 module) | Working | Joins a WPA2 network. A TCP client and a connected UDP socket send and receive |
+| Zephyr's SMP UDP transport on that Wi-Fi driver | Not working | The driver refuses `sendto()` and `recvfrom()` with an address, and the transport uses both |
+| The kit's dial-out transport on that Wi-Fi driver | Partial | The board opens a connected UDP socket to a host. Failure suite 10 of 10 in the second pass, but only 7 of 10 update runs in the second series. No encryption, no authentication |
 | Wi-Fi, SMP over UDP, on an ESP32 (`esp32_devkitc`) | Tested | 30 of 30 update runs and the failure suite, 9 of 9 cases, two passes (the first Wi-Fi session and the second Wi-Fi session). No encryption, no authentication |
 
 ## BLE: tested
@@ -260,6 +261,160 @@ All of this happens before any network is joined.
 - A driver change so that `recvfrom` reports the sender and `sendto` accepts a destination, if the module's AT command set can provide them. Not investigated.
 - Or a different design that fits the driver: the device opens a TCP or UDP client connection to a server and pulls the image, instead of serving SMP.
 - Either way the RAM budget is tight: over 90 K of 96 K is used before any application code is added.
+
+## Wi-Fi on the STM32 board with a connected socket: partial
+
+2026-10-07. ST B-L475E-IOT01A, Wi-Fi module ISM43362 on SPI3, Bluetooth off, UART kept as console and second transport.
+The two sections above describe the first attempt, with Zephyr's own SMP UDP transport. This section is the second attempt, with a transport of the kit.
+
+### What was read first
+
+**The eS-WiFi offload driver** (`drivers/wifi/eswifi/eswifi_socket_offload.c`). Its socket table has `connect`, `bind`, `listen`, `accept`, `sendto`, `recvfrom`, `setsockopt`, `read`, `write`, `close`, and a `poll` for one socket that only waits for input.
+
+- `sendto()` returns error 95 (`EOPNOTSUPP`) when a destination address is given. With no address it is `send()`.
+- `recvfrom()` returns error 95 when the caller asks for the sender's address. Without that it is `recv()`.
+- So the failure depends on the address argument only. Zephyr's SMP UDP transport always gives one, in both calls. That is the whole reason for the "error 95" above.
+
+**The AT commands**, from the vendor's command list: `C1`, `C2`, `C3` and `C0` join a network. `P0` selects a socket, `P1` the protocol, `P2` the local port, `P3` and `P4` the remote address and port, `P5` starts or stops a server, `P6` a client. `R0` reads, `S3` writes. `MR` reads asynchronous messages on SPI, which is how a server reports a connection. `Z1` saves settings in the module, `Z2` clears them.
+
+**The module firmware**, read with `I?` through the driver's shell: `ISM43362-M3G-L44-SPI,C3.5.2.5.STM`. The board's user manual UM2153 names `C3.5.2.3.BETA9` as the required revision. That manual was read by the owner, not for this document.
+
+**What could be reused from the ESP32 work**: the code that joins a stored network, the script that stores it, the lock on shell commands, and all of the host client and test scripts. Only the transport is new.
+
+### First try: connected sockets
+
+The board connects a socket to an echo server on the laptop and uses `send()` and `recv()` with no address (`CONFIG_OTA_KIT_WIFI_DIAL_PROBE`):
+
+```
+WIFI: joined, IP 192.168.x.x, 4736 ms after boot
+WIFI: probe TCP: socket 0, connect 0, send 5, recv 5, errno 22
+WIFI: probe UDP: socket 0, connect 0, send 5, recv 5, errno 22
+```
+
+Both work: the TCP client and the connected UDP socket each sent 5 bytes and received the 5 byte echo. The `errno` value is left over from before, the calls returned no error. Seen twice.
+
+The second try, a download over HTTP, and the third, the module's own server mode, **were not started**: the first try worked.
+
+### The transport
+
+Kit option `OTA_KIT_WIFI_DIAL`, snippet `ota-kit-wifi-dial`, `VARIANT=wifi scripts/build.sh` on this board, `src/ota_kit_wifi_dial.c`.
+
+- The board joins the stored network, opens a UDP socket, connects it to a host address given at build time, and serves SMP on it with `send()` and `recv()`.
+- It sends a short hello every 2 s while nothing arrives, so that the host learns where the board is.
+- On the host, `scripts/udp_relay.py` passes datagrams between the board and a local SMP client. The normal tools then work with `--udp 127.0.0.1`.
+- The host has to send small datagrams, `OTA_UDP_MTU=384`, and to send a request again when no answer comes, `OTA_UDP_RETRY_S=2`. SMP has no retransmission of its own.
+
+Three things had to be learned on the board:
+
+1. **The module hands one datagram to the driver in pieces.** The first upload failed with `rc=9`, a request cut short. The transport now collects a request by the length in the SMP header.
+2. **The host client sent 1472 byte datagrams** although the board had told it a buffer size of 384. They were dropped. The client is now told the size.
+3. **A long wait in the receive loop cost 2 s per stalled request.** The driver only fetches data from the module when it is asked to. With a 2 s wait, a request sometimes sat for the full 2 s, the host sent it again, and the first answer came late. The loop now waits 100 ms at a time. Numbers below.
+
+### RAM and flash
+
+With MCUboot and the kit, Wi-Fi and UART, Bluetooth off. Nothing in MCUboot or in the application was made smaller.
+
+| | UART only | UART and Wi-Fi |
+|---|---|---|
+| Application, flash | 47812 B | 179872 B |
+| Application, RAM | 15104 B | 96500 B of 98304 B (98.2%) |
+| MCUboot, flash | 40512 B | 40512 B |
+| Signed image | 47964 B | 180023 B |
+
+It fits, with 1804 B of RAM left. The Wi-Fi image is 20% of what the slot can swap.
+
+### First signed update
+
+```
+upload done in 79.06 s (2277 B/s)
+I: Image index: 0, Swap type: test
+I: Image version: v1.1.0
+OTA app v1.1.0, blink 200 ms, TEST boot, not confirmed yet
+WIFI: joined, IP 192.168.x.x, 4738 ms after boot
+health check OK, image confirmed
+after:  slot0 v1.1.0 active confirmed, slot1 v1.0.0
+RESULT OK: running v1.1.0, upload 79.06 s, bootloader+swap 14.25 s, total 100.26 s
+```
+
+### Failure suite
+
+Two passes, `tests/last_run_wifi.md`, logs in `tests/logs_wifi/`. The first pass was with the 2 s wait in the receive loop, the second with the 100 ms wait and all images built again.
+
+| Case | Pass 1 | Pass 2 |
+|---|---|---|
+| 1 good update | PASS | PASS |
+| 2 failed health check | PASS | PASS |
+| 3 wrong key | PASS | PASS |
+| 4 raw binary | PASS, different path | PASS, different path |
+| 4b no signature | PASS | PASS |
+| 5 corrupted | **FAIL**, test error | PASS |
+| 6 interrupted upload | PASS | PASS, killed at 90095 of 180078 B |
+| 7 downgrade | PASS | PASS |
+| 8 hang in `main()` | PASS, reset after 10.1 s | PASS, reset after 10.1 s |
+| 9 hang before `main()` | **FAIL**, wrong reading | PASS, reset 29.7 s after the jump |
+| 10 reset during erase | not run | not run, the case sends a raw frame on the UART |
+
+Pass 1: 8 of 10. Pass 2: **10 of 10**.
+
+The two failures of pass 1 were mistakes of the test, not of the update:
+
+- With SMP on the network, nobody reads the console during an upload. Old lines stayed in the USB serial adapter and were taken for the boot after the reset. In case 9 the board did reset by its watchdog 30 s after the jump and did revert, but the test read 0.3 s from an old line. In case 5 MCUboot refused the image and the old version ran, but the test asked for the slot state too early and timed out.
+- The scripts now empty the console just before they send the reset request, and log what they find.
+
+### Update runs
+
+`tests/measure.py 10`, 180 K image, twice.
+
+| | First series, 2 s wait | Second series, 100 ms wait |
+|---|---|---|
+| Updated and confirmed | 9 of 10. Run 10 is not valid, the laptop lost its network | **7 of 10** |
+| Failed | 0 | 3: runs 4, 5 and 7. An upload request got no answer for 20 s, through 5 repeats |
+| Upload | 119.4 to 498.0 s, median 134.1 s | 99.8 to 116.0 s, median 111.6 s |
+| MCUboot and swap | 14.2 to 14.2 s, median 14.2 s | 14.2 to 14.2 s, median 14.2 s |
+| Upload start to confirmed | 140.8 to 518.9 s, median 155.3 s | 121.0 to 137.7 s, median 132.9 s |
+| Raw rows | `docs/data/update_runs_wifi_first_series.csv` | `docs/data/update_runs_wifi.csv` |
+
+**Open defect: in the second series 3 of 10 uploads stopped.** The board gave no answer over the network for more than 10 s. After each one the test flashed the board again, so its state at that moment was not looked at.
+Three more uploads were then run with a check of the board ready for the next stop: all three completed, 110 to 116 s, no stop. So the cause was not found, and it is not known whether the board recovers by itself.
+The 100 ms wait removed the 2 s stalls and brought something else. The first series, with the 2 s wait, had no such stop in 18 uploads, and had 236 repeats.
+
+### Link events on this transport
+
+| Event | Pass 1 and first series, 2 s wait | Pass 2 and second series, 100 ms wait |
+|---|---|---|
+| Uploads | 18 | 22 |
+| Request sent again after 2 s without an answer | 802 | 62 |
+| Late answer dropped by the host | 753 | 0 |
+| Upload stopped, no answer through all repeats | 0 | 3 |
+| Request while the board was still joining | 69 | 44 |
+| CRC error, or the same console line more than 5 times | 0 | 0 |
+
+One event was on the laptop: at 20:46 its own network was unreachable for a moment and the relay stopped with an error. Run 10 of the first series is not valid for that reason. The relay now logs such an error and goes on.
+
+### Where the network name and passphrase are
+
+- Not in the build, not in this repository, not on the laptop. `scripts/wifi_provision.py --port /dev/ttyACM0` asks for them without echo.
+- On the board they are in the settings partition, the last 32 K of the internal flash, in plain text. A mass erase of the flash removes them.
+- **Stored network settings are on the internal flash. Mass erase the board before you share it.** Done on 2026-10-07 for the board used here: after the mass erase the last 32 K read back as 0xFF in every byte, with no printable string.
+- The Wi-Fi module does not keep them. The driver sends `C1` and `C2` at each join and never sends the save command `Z1`. If a module had saved settings, `Z2` would clear them. It was not run.
+
+### Security
+
+This transport has no encryption and no authentication.
+
+- The board talks to whoever answers at the host address that was built in. A person who has that address on the network, or who can send from it, can upload, erase slot 1, reset the board and read the installed versions.
+- An update can be read in clear text on the network.
+- The relay on the host passes on what any device sends to its port after a hello.
+- An image that is not signed with the owner's key does not start: cases 3, 4b and 5 over this transport. An older signed image is refused: case 7. Shell commands over the network are refused once a network is stored, return code 11.
+
+### Limits
+
+- One board, one evening, one access point, the laptop close by. Join time 4.7 s to 7.6 s after boot in the second pass, and once 19.9 s right after the network was stored.
+- Upload speed is about 1.5 kB/s. The SMP buffers are 384 B and there is no RAM left for larger ones.
+- 1804 B of RAM are free. Bluetooth and Wi-Fi together were not tried, and the two modules share SPI3.
+- The module firmware is not the revision that the user manual names.
+- The host address is fixed at build time. A laptop that gets another address needs a new build.
+- The Wi-Fi source files are not in the scope of the static analysis.
 
 ## Wi-Fi and SMP over UDP on the ESP32: tested
 

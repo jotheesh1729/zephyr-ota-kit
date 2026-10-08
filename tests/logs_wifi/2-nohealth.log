@@ -1,0 +1,32 @@
+*** Using Zephyr OS build v4.4.0-13485-g133c2eb7d3cb ***
+I: Starting bootloader
+I: Primary image: magic=unset, swap_type=0x1, copy_done=0x3, image_ok=0x3
+I: Secondary image: magic=good, swap_type=0x2, copy_done=0x3, image_ok=0x3
+I: Boot source: none
+I: Image index: 0, Swap type: test
+I: Starting swap using move algorithm.
+I: Bootloader chainload address offset: 0x10000
+I: Image version: v2.0.1
+I: Jumping to the first image slot
+*** Booting Zephyr OS build v4.4.0-13485-g133c2eb7d3cb ***
+OTA app v2.0.1, blink 1000 ms, TEST boot, not confirmed yet
+watchdog armed, last reset by other cause
+WIFI: stored network found, connecting
+health check FAILED, not confirming
+--- reset ---
+joined, IP 192.168.x.x, 11802 ms after boot
+Connected
+WIFI: dialing the host, UDP port 1338
+*** Using Zephyr OS build v4.4.0-13485-g133c2eb7d3cb ***
+I: Starting bootloader
+I: Primary image: magic=good, swap_type=0x2, copy_done=0x1, image_ok=0x3
+I: Secondary image: magic=unset, swap_type=0x1, copy_done=0x3, image_ok=0x3
+I: Boot source: none
+I: Image index: 0, Swap type: revert
+I: Starting swap using move algorithm.
+I: Secondary image: magic=unset, swap_type=0x1, copy_done=0x3, image_ok=0x3
+I: Bootloader chainload address offset: 0x10000
+I: Image version: v1.0.0
+I: Jumping to the first image slot
+*** Booting Zephyr OS build v4.4.0-13485-g133c2eb7d3cb ***
+OTA app v1.0.0, blink 1000 ms, confirmed
