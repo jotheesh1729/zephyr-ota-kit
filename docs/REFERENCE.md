@@ -70,6 +70,7 @@ Not protected:
 - **Downgrade by debug probe.** MCUboot refuses an image with a lower version than the running one (tested, rejected at boot). Someone with a probe can still write any version.
 - **Confidentiality, by default.** Updates are not encrypted unless built with `ENC=1`. Even then MCUboot keeps the private key in its own flash, and on this board that flash is readable. See "Encrypted images" in docs/RESULTS.md.
 - **The UART transport.** SMP on the UART has no authentication. Anyone on the port can upload, erase slot 1, or reset the board. They cannot make an unsigned image boot.
+- **The Wi-Fi transport on the STM32 board.** The board opens a UDP socket to a host address that is fixed at build time, with no encryption and no authentication. Whoever answers at that address, or can send from it, can upload, erase slot 1, reset the board and read the installed versions. An update can be read on the network. An image that is not signed with the owner's key still does not boot. The network name and passphrase are stored on the board in plain text. See [TRANSPORTS.md](TRANSPORTS.md).
 - **The Wi-Fi transport (ESP32, SMP over UDP).** No encryption and no authentication. Anyone on the same network can upload a file, erase slot 1, reset the board and read the installed versions, and can see an update in clear text. They cannot make an image boot that is not signed with the owner's key, and they cannot run shell commands. The network name and passphrase are stored on the board in plain text. See HAZ-16 and HAZ-17 in [docs/HAZARDS.md](HAZARDS.md).
 - **The BLE transport, partly.** The link is encrypted and SMP needs a paired central. But pairing is "Just Works": it does not prove who the central is, and it has no protection against a man in the middle. The board keeps a single bond, so the first device to pair should be the only one accepted until the storage is erased. That lockout was not tested, and before the first pairing anyone in range can take the slot. Passkey pairing is not implemented.
 - **The key at rest.** It is an unencrypted PEM file on the build host. This is a development key.
@@ -196,14 +197,15 @@ zephyr/module.yml         makes this repository a Zephyr module, the OTA kit
 zephyr/patches.yml        optional patch for the Espressif HAL, for "west patch"
 west.yml                  optional west manifest: Zephyr pinned to the tested revision
 Kconfig, CMakeLists.txt   the options and the build file of the module
-src/, include/            the kit: health thread, confirm, watchdog, BLE advertising, Wi-Fi join
+src/, include/            the kit: health thread, confirm, watchdog, BLE advertising, Wi-Fi join,
+                          the dial-out transport
 linker/                   the size guard
 sysbuild/                 the sysbuild options of the kit, applied to MCUboot and the application
-snippets/                 ota-kit, ota-kit-ble, ota-kit-wifi, and the board files
+snippets/                 ota-kit, ota-kit-ble, ota-kit-wifi, ota-kit-wifi-dial, and the board files
 app/                      example application: LED blink, health check, test options
 samples/minimal/          smallest application that uses the kit
 keys/                     your signing key goes here, it is not in the repository
-scripts/                  build.sh, ota_update.py, ota_doctor.py, wifi_provision.py,
+scripts/                  build.sh, ota_update.py, ota_doctor.py, wifi_provision.py, udp_relay.py,
                           static_analysis.py, powerctl.py
 tools/                    relay controller for the power loss tests (MicroPython, ESP32)
 tests/                    build_images.sh, run_tests.py, measure.py, uart_soak.py, powerloss.py,

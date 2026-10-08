@@ -109,11 +109,12 @@ The device runs an image that was built with the kit. You want to install a newe
    ```sh
    scripts/ota_update.py build/v1.1.0/app/zephyr/zephyr.signed.bin                    # UART, port /dev/ttyACM0
    scripts/ota_update.py build/ble-v1.1.0/app/zephyr/zephyr.signed.bin --ble ota-kit  # Bluetooth LE
-   scripts/ota_update.py build/esp32-wifi-v1.1.0/app/zephyr/zephyr.signed.bin --udp ADDRESS --port /dev/ttyUSB0   # Wi-Fi
+   scripts/ota_update.py build/esp32-wifi-v1.1.0/app/zephyr/zephyr.signed.bin --udp ADDRESS --port /dev/ttyUSB0   # Wi-Fi, ESP32
    ```
 
    For Bluetooth LE, build with `VARIANT=ble scripts/build.sh 1.1.0` and pair the host with the device first.
-   For Wi-Fi, build with `BOARD=esp32_devkitc/esp32/procpu VARIANT=wifi scripts/build.sh 1.1.0`. `ADDRESS` is the address that the device prints when it joins the network.
+   For Wi-Fi on the ESP32, build with `BOARD=esp32_devkitc/esp32/procpu VARIANT=wifi scripts/build.sh 1.1.0`. `ADDRESS` is the address that the device prints when it joins the network.
+   Wi-Fi on the ST board uses a relay script on the host and has an open defect. [docs/TRANSPORTS.md](docs/TRANSPORTS.md) gives the commands.
 
 4. Read the last line of the output.
 
@@ -151,7 +152,7 @@ Your application does not have an update path yet. You add the kit, then you fla
      -DSB_CONFIG_BOOT_SIGNATURE_KEY_FILE=\"/abs/path/to/ota-kit/keys/ota_signing.pem\"
    ```
 
-   Add `-S ota-kit-ble` for Bluetooth LE, or `-S ota-kit-wifi` for Wi-Fi on the ESP32.
+   Add `-S ota-kit-ble` for Bluetooth LE, `-S ota-kit-wifi` for Wi-Fi on the ESP32, or `-S ota-kit-wifi-dial` for Wi-Fi on the ST board.
 
 3. Check the build with the doctor before you flash it.
 
@@ -165,6 +166,8 @@ Your application does not have an update path yet. You add the kit, then you fla
 4. Flash MCUboot and the first image.
 
    **WARNING: On the ESP32, `--erase` erases the full flash. A Wi-Fi network that is stored on the board is erased too.**
+
+   **WARNING: A board with Wi-Fi keeps the network name and the passphrase in its flash as plain text. Erase them before you give the board to another person.** [docs/TRANSPORTS.md](docs/TRANSPORTS.md) and [docs/BOARD_ESP32.md](docs/BOARD_ESP32.md) give the commands.
 
    ```sh
    (cd ~/zephyrproject && west flash -d /abs/path/to/build --runner openocd)                      # ST board
@@ -206,9 +209,9 @@ Only results from hardware are in this table. "Tested" and "supported" mean that
 | Board | Transport | Status | Evidence |
 |---|---|---|---|
 | ST B-L475E-IOT01A (`disco_l475_iot1`) | UART | **Tested.** Failure suite 11 of 11, 20 of 20 measured runs, near full slot image, 60 power cuts with no board lost | [RESULTS.md](docs/RESULTS.md), [POWERLOSS.md](docs/POWERLOSS.md) |
-| ST B-L475E-IOT01A | Bluetooth LE, encrypted link | **Tested.** Failure suite twice (8, then 9 cases), 20 + 5 measured runs | [TRANSPORTS.md](docs/TRANSPORTS.md), [RESULTS.md](docs/RESULTS.md) |
-| ST B-L475E-IOT01A | Wi-Fi | Not working. The Wi-Fi driver of this board cannot carry SMP over UDP | [TRANSPORTS.md](docs/TRANSPORTS.md) |
-| ESP32 WROOM-32 (`esp32_devkitc/esp32/procpu`) | Wi-Fi, SMP over UDP | **Supported.** Failure suite clean in three passes (9, 9 and 10 cases), 30 of 30 measured runs, one afternoon on one network. No encryption, no authentication | [BOARD_ESP32.md](docs/BOARD_ESP32.md) |
+| ST B-L475E-IOT01A | Bluetooth LE, encrypted link | **Tested on earlier firmware.** Failure suite twice (8, then 9 cases), 20 + 5 measured runs. Not run again after the later changes | [TRANSPORTS.md](docs/TRANSPORTS.md), [RESULTS.md](docs/RESULTS.md) |
+| ST B-L475E-IOT01A | Wi-Fi, connected UDP socket through a relay script | Partial. Failure suite 10 of 10 on the second pass. Defect: 3 of 10 update runs in the second series stopped during the upload, cause not found. No encryption, no authentication | [TRANSPORTS.md](docs/TRANSPORTS.md) |
+| ESP32 WROOM-32 (`esp32_devkitc/esp32/procpu`) | Wi-Fi, SMP over UDP | **Supported on this evidence:** failure suite clean in four passes, 30 of 30 measured runs, and 5 of 5 on a build with the HAL patch. One day, one network. No encryption, no authentication | [BOARD_ESP32.md](docs/BOARD_ESP32.md) |
 | ESP32 WROOM-32 | UART | Partial. Updates, rollback and watchdog work. One request in about 100 uploads got no answer, cause not found | [BOARD_ESP32.md](docs/BOARD_ESP32.md) |
 | ESP32 WROOM-32 | Bluetooth LE | Not tested. Two updates worked, the suite was not run | [BOARD_ESP32.md](docs/BOARD_ESP32.md) |
 | `nrf52840dk/nrf52840`, `native_sim` | none | Compile only. The nRF build was never flashed. The `native_sim` sample runs, with no bootloader and no update | [RESULTS.md](docs/RESULTS.md), [DOCTOR.md](docs/DOCTOR.md) |
@@ -236,8 +239,9 @@ Read these before you use the kit.
 1. **The debug port is open.** Readout protection is off. A person with a probe can read the firmware and the keys, and can replace the bootloader. All other protections assume that this does not occur.
 2. **Power loss is tested only in its simplest form.** See the limits above. The swap also uses an MCUboot option that is marked experimental upstream.
 3. **There is no safe state check.** The device resets and swaps when the host tells it to. The device does not look at its own work first.
-4. **An image that stops before `main()` needs a watchdog from the bootloader.** On the ESP32 the board first stayed stopped until a person reset it, in 3 of 3 runs. MCUboot now starts a watchdog that stays active: 3 of 3 runs recovered in about one minute. On the ST board the same test recovered in 2 of 2 runs. The device does nothing for up to 30 seconds. Only a small number of runs support this.
+4. **An image that stops before `main()` makes the device do nothing for about 30 seconds.** MCUboot starts a watchdog that stays active when the application starts. The watchdog resets the device after about 30 seconds, and MCUboot reverts the image. This was measured on the two boards: 2 of 2 runs on the ST board, 3 of 3 on the ESP32. Before this watchdog was set up on the ESP32, the board stayed stopped until a person reset it. Only a small number of runs support the result.
 5. **The update channels are not authenticated.** A person on the UART or on the Wi-Fi network can upload, erase and reset. That person cannot make an image start that you did not sign.
+6. **Wi-Fi on the ST board is not reliable.** In the last series, 3 of 10 uploads stopped and the cause was not found. Do not use this transport for a device that you cannot reach by cable.
 
 The full analysis is in [docs/HAZARDS.md](docs/HAZARDS.md). The security model is in [docs/REFERENCE.md](docs/REFERENCE.md).
 
@@ -256,3 +260,4 @@ Apache-2.0. See [LICENSE](LICENSE). This is the same license as Zephyr and MCUbo
 - The work was done during several weeks in a private repository, on real hardware: an STM32 board and an ESP32 board.
 - This repository was built from the final files of the private repository, in a small number of commits that are grouped by topic. Its history does not show the order or the dates of the real work.
 - The raw data from the real runs is in `docs/data`. The test logs are in `tests/logs`.
+- Later results were added in a second small group of commits: Wi-Fi on the STM32 board, and one more test of the ESP32 build.

@@ -19,6 +19,7 @@ First version. Developed and tested on an ST B-L475E-IOT01A (`disco_l475_iot1`),
   - Build check for a missing flash reset command on an STM32 QSPI flash.
 - **Sysbuild integration** (`sysbuild/`, snippets `ota-kit` and `ota-kit-ble`): MCUboot with swap using move and ECDSA P256, MCUboot watchdog timeout, logical sector size, downgrade prevention.
 - **Board support for `disco_l475_iot1`**: slot 0 resize, 4 K logical sectors, QSPI flash reset at init, 30 s MCUboot watchdog timeout.
+- **Wi-Fi on `disco_l475_iot1`**: kit option `OTA_KIT_WIFI_DIAL` and snippet `ota-kit-wifi-dial`. The board opens a connected UDP socket to a host, because the eS-WiFi driver cannot do `sendto()` and `recvfrom()` with an address. `scripts/udp_relay.py` is the host side. `OTA_UDP_MTU` and `OTA_UDP_RETRY_S` in `scripts/ota_update.py`.
 - **Board support for `esp32_devkitc`** (ESP32 WROOM-32). Wi-Fi is supported, UART is partial, Bluetooth is not tested, see `docs/BOARD_ESP32.md`.
   - Wi-Fi: kit option `OTA_KIT_WIFI_UDP` and snippet `ota-kit-wifi` add SMP over UDP next to the UART. `scripts/wifi_provision.py` stores the network on the board, not in the build. SMP shell commands are refused once a network is stored.
   - The kit sets `CONFIG_BOOT_VALIDATE_SLOT0=y` in MCUboot. MCUboot's ESP32 configuration turns it off.
@@ -69,6 +70,6 @@ ESP32 WROOM-32:
 - ESP32: an upstream fault in the early flash init can produce an image that aborts before `main()`. The fix is not merged upstream and is carried as an optional patch.
 - ESP32 over UART: one unanswered request in about 100 uploads, cause not found. Bluetooth on the ESP32 has no suite run.
 - Wi-Fi was tested on one afternoon on one network, with the laptop close by.
-- Wi-Fi does not work as a transport on the STM32 board.
+- Wi-Fi on the STM32 board works only through the kit's dial-out transport and a relay on the host, at about 1.5 kB/s, with 1.8 K of RAM left and a host address fixed at build time.
 - MCUboot's logical sector option, which the STM32 layout needs, is marked experimental upstream.
 - Not a certified product, and not a MISRA compliance claim.

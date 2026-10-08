@@ -7,7 +7,7 @@ The examples come from the two boards that ran on hardware:
 
 | Board | What was done |
 |---|---|
-| `disco_l475_iot1` (ST B-L475E-IOT01A) | Failure suite and measurements on hardware, UART and Bluetooth LE |
+| `disco_l475_iot1` (ST B-L475E-IOT01A) | Failure suite and measurements on hardware, UART and Bluetooth LE. Wi-Fi is partial |
 | `esp32_devkitc/esp32/procpu` (ESP32 WROOM-32) | Failure suite and measurements over Wi-Fi. UART is partial. See [BOARD_ESP32.md](BOARD_ESP32.md) |
 | `nrf52840dk/nrf52840` | Compile only. Never flashed |
 | `native_sim` | The minimal sample builds and runs. No MCUboot, no update |
@@ -23,9 +23,9 @@ Tested with Zephyr `v4.4.0-13485-g133c2eb7d3cb` and MCUboot `v2.4.0-118`. Other 
 | SMP server: image upload, image state, reset | selected by `CONFIG_OTA_KIT` |
 | Health thread: confirms a test image only if your function returns true | `src/ota_kit.c` |
 | Watchdog: armed before `main()`, fed by the health thread | `CONFIG_OTA_KIT_WATCHDOG` |
-| Transport: UART, Bluetooth LE, or UART and Wi-Fi | `CONFIG_OTA_KIT_TRANSPORT_*`, `CONFIG_OTA_KIT_WIFI_UDP` |
+| Transport: UART, Bluetooth LE, or UART and Wi-Fi | `CONFIG_OTA_KIT_TRANSPORT_*`, `CONFIG_OTA_KIT_WIFI_UDP`, `CONFIG_OTA_KIT_WIFI_DIAL` |
 | MCUboot settings for sysbuild | `sysbuild/Kconfig` |
-| Snippets that turn it all on | `snippets/ota-kit`, `snippets/ota-kit-ble`, `snippets/ota-kit-wifi` |
+| Snippets that turn it all on | `snippets/ota-kit`, `snippets/ota-kit-ble`, `snippets/ota-kit-wifi`, `snippets/ota-kit-wifi-dial` |
 
 Your application adds one call:
 
@@ -182,13 +182,17 @@ Bluetooth LE (`-S ota-kit-ble`):
 - The kit sets a fixed address that is made from the chip ID, so the bond stays valid after a reset. This is not a registered address. On the ESP32 the option is off, the chip has its own address.
 - The link is encrypted, but pairing does not prove the identity of the host. Read the security part of [TRANSPORTS.md](TRANSPORTS.md).
 
-Wi-Fi (`-S ota-kit-wifi`), tested on the ESP32 only:
+Wi-Fi, two forms. Select the form that your Wi-Fi driver can do:
 
-- The board needs a Zephyr Wi-Fi driver with a full IP stack and a `storage_partition`.
+- `-S ota-kit-wifi`: for a driver with a full socket interface. The device listens on UDP port 1337. Tested on the ESP32.
+- `-S ota-kit-wifi-dial`: for a driver that can only do `send()` and `recv()` on a connected socket, such as eS-WiFi on `disco_l475_iot1`. The device opens a UDP socket to a host address that is fixed at build time. Run `scripts/udp_relay.py` on that host. Status on that board: partial, see [TRANSPORTS.md](TRANSPORTS.md).
+
+For the two forms:
+
+- The board needs a `storage_partition`.
 - UART stays active as the console and as a second transport.
 - There is no encryption and no authentication. A person on the network can upload, erase slot 1 and reset.
-- The network name and the passphrase are stored on the board as plain text.
-- On `disco_l475_iot1` Wi-Fi does not work as a transport. See [TRANSPORTS.md](TRANSPORTS.md).
+- The network name and the passphrase are stored on the board as plain text. Erase them before you give the board to another person.
 
 ## Step 6: put the board settings in the right place
 
@@ -309,7 +313,7 @@ Each row was seen on `disco_l475_iot1`, or on the ESP32 where the row says so. T
 | Board resets about 10 s into a slot erase | Something starves the health thread. The kit runs it above the SMP thread for this reason | Keep long work out of threads above the health thread |
 | Kconfig stops with a warning about `UART_INTERRUPT_DRIVEN` | The UART driver has no interrupt support | `CONFIG_OTA_KIT_TRANSPORT_CUSTOM`, or another UART |
 | BLE works until the first reset, then the host cannot reconnect | The address changed, so the stored bond is useless | Keep `CONFIG_OTA_KIT_BLE_DEVICE_ADDR_FROM_CHIP_ID=y` |
-| `smp_udp: recvfrom error ...: 95` in a loop | The network driver's sockets do not support what SMP over UDP needs | No fix here, see `docs/TRANSPORTS.md` |
+| `smp_udp: recvfrom error ...: 95` in a loop | The sockets of the network driver refuse `recvfrom()` and `sendto()` with an address | Use `-S ota-kit-wifi-dial`, see [TRANSPORTS.md](TRANSPORTS.md) |
 | ESP32: `E (flash_init): Failed to init flash chip: 1`, then `abort()`, before the application prints a line | A fault in the early flash code of the Espressif HAL, which depends on the link layout | Apply the patch, see [BOARD_ESP32.md](BOARD_ESP32.md) |
 | An image stops before `main()` and the device does not reset | The watchdog of MCUboot is off, or it does not stay active when the application starts | Step 4 |
 | ESP32: an image written to slot 0 with a wrong signature starts | The ESP32 configuration of MCUboot turns off the check of slot 0. The kit turns it on | Use the `ota-kit` snippet, and run the doctor, rule SIG-02 |
@@ -343,6 +347,7 @@ Application image:
 | `CONFIG_OTA_KIT_BLE_DEVICE_ADDR_FROM_CHIP_ID` | y with BLE | Fixed address so bonds survive resets |
 | `CONFIG_OTA_KIT_SIZE_GUARD` | y with swap using move, Cortex-M only | Build fails if the image is larger than MCUboot can swap |
 | `CONFIG_OTA_KIT_WIFI_UDP` | n | Adds SMP over UDP on Wi-Fi to the selected transport |
+| `CONFIG_OTA_KIT_WIFI_DIAL` | n | Adds SMP over a connected UDP socket that the device opens to `CONFIG_OTA_KIT_WIFI_DIAL_HOST` |
 | `CONFIG_OTA_KIT_WIFI_LAYOUT_PAD_WORDS` | 1 with Wi-Fi | Workaround for the ESP32 early start fault, see [BOARD_ESP32.md](BOARD_ESP32.md) |
 | `CONFIG_OTA_KIT_SWAP_SECTOR_SIZE` | 0x0, from the devicetree | Sector size for the size guard, set by sysbuild with logical sectors |
 
@@ -353,6 +358,7 @@ Sysbuild:
 | `SB_CONFIG_OTA_KIT` | n, set by the `ota-kit` snippet | Turn the kit on in the application image |
 | `SB_CONFIG_OTA_KIT_TRANSPORT_BLE` | n, set by the `ota-kit-ble` snippet | BLE instead of UART |
 | `SB_CONFIG_OTA_KIT_WIFI_UDP` | n, set by the `ota-kit-wifi` snippet | SMP over UDP on Wi-Fi, in addition |
+| `SB_CONFIG_OTA_KIT_WIFI_DIAL` | n, set by the `ota-kit-wifi-dial` snippet | SMP over a connected UDP socket, in addition |
 | `SB_CONFIG_OTA_KIT_MCUBOOT_CONSOLE_LOG` | n, set for the ESP32 | Turns on the console and the log of MCUboot |
 | `SB_CONFIG_OTA_KIT_DOWNGRADE_PREVENTION` | n, set by the `ota-kit` snippet | MCUboot refuses an image with a lower version, at boot |
 | `SB_CONFIG_OTA_KIT_MCUBOOT_WATCHDOG_TIMEOUT_MS` | 0 | MCUboot watchdog timeout, 0 keeps MCUboot's default |
