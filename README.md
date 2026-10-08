@@ -71,13 +71,12 @@ The versions that were used are in [docs/SETUP.md](docs/SETUP.md).
 Do these steps one time:
 
 ```sh
-git clone REPLACE_WITH_REPOSITORY_URL ota-kit && cd ota-kit
+git clone https://github.com/jotheesh1729/zephyr-ota-kit ota-kit && cd ota-kit
 source ~/zephyrproject/.venv/bin/activate
 pip install smpclient
 imgtool keygen -k keys/ota_signing.pem -t ecdsa-p256
 ```
 
-`REPLACE_WITH_REPOSITORY_URL` is a placeholder for the address of this repository.
 The last command makes your private signing key. The file is ignored by git.
 
 **WARNING: Keep `keys/ota_signing.pem` secret. A person who has this file can sign firmware for your devices.**

@@ -326,7 +326,7 @@ For the Zephyr Discord or GitHub Discussions, STM32 and MCUboot:
 >
 > 3. **A question about the size limit with swap using move.** My slot 0 is one sector larger than slot 1, as design.md describes. The linker allowed an application of 880490 B, while (N-1) x sector - trailer gives 876544 B. Is the larger slot 0 expected to be reflected in the application's size limit?
 >
-> Versions: Zephyr 133c2eb7d3cb, MCUboot 7ad67106. Details, logs and numbers: `docs/UPSTREAM.md` in REPLACE_WITH_REPOSITORY_URL.
+> Versions: Zephyr 133c2eb7d3cb, MCUboot 7ad67106. Details, logs and numbers: `docs/UPSTREAM.md` in https://github.com/jotheesh1729/zephyr-ota-kit .
 >
 > Happy to send patches for the board file (watchdog timeout, `reset-cmd`) if that is the right fix. The third one is only a question.
 
@@ -341,4 +341,4 @@ As a comment on Zephyr issue #120719, and a question next to it, ESP32:
 > - A watchdog that MCUboot starts on `wdt0` did not help: no reset with 30 s or 5 s. On `wdt1` the reset came after 30 s. From the source it looks like `esp_timer_early_init()` resets timer group 0 in the application's start code. Is a watchdog handed over from MCUboot expected to work with the default alias?
 > - Separately: MCUboot's `socs/esp32*.conf` set `CONFIG_BOOT_VALIDATE_SLOT0=n`. With a signature type selected in sysbuild, a corrupted image written to slot 0 still booted. Is that setting meant for the unsigned default only?
 >
-> Logs and numbers: `docs/BOARD_ESP32.md` and `docs/UPSTREAM.md` in REPLACE_WITH_REPOSITORY_URL.
+> Logs and numbers: `docs/BOARD_ESP32.md` and `docs/UPSTREAM.md` in https://github.com/jotheesh1729/zephyr-ota-kit .

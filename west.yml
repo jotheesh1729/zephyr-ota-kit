@@ -3,7 +3,7 @@
 #
 # West manifest, so that this repository can be the manifest repository of a small workspace:
 #
-#   mkdir ws && cd ws && git clone REPLACE_WITH_REPOSITORY_URL ota-kit
+#   mkdir ws && cd ws && git clone https://github.com/jotheesh1729/zephyr-ota-kit ota-kit
 #   west init -l ota-kit && west update --narrow -o=--depth=1
 #
 # Zephyr is pinned to the revision everything here was tested with. Only the modules the
